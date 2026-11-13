@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { reviewGradeSchema } from './review';
 
 /**
  * Thẻ và Bộ thẻ do người học tự quản lý (GLOSSARY.md). Tách biệt với ôn câu hỏi bài tập (`review.ts`):
@@ -86,3 +87,50 @@ export type DeckSummary = z.infer<typeof deckSummarySchema>;
 export type Flashcard = z.infer<typeof flashcardSchema>;
 export type DeckListResponse = z.infer<typeof deckListResponseSchema>;
 export type DeckDetailResponse = z.infer<typeof deckDetailResponseSchema>;
+
+// Ôn Thẻ: cùng bốn mức nhớ và quy tắc kẹp giờ với ôn câu hỏi bài tập (`review.ts`).
+export const dueFlashcardsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const dueFlashcardSchema = flashcardSchema.pick({
+  id: true,
+  deckId: true,
+  front: true,
+  back: true,
+  dueAt: true,
+  intervalDays: true,
+  repetitions: true,
+});
+
+export const dueFlashcardsResponseSchema = z.object({
+  cards: z.array(dueFlashcardSchema),
+  /** Tổng số thẻ đến hạn trong phạm vi hỏi (không bị cắt bởi `limit`). */
+  dueCount: z.number().int(),
+  /** Thẻ gần nhất chưa đến hạn; `null` khi không còn thẻ nào. */
+  nextDueAt: z.string().nullable(),
+});
+
+export const submitFlashcardReviewSchema = z
+  .object({
+    grade: reviewGradeSchema,
+    /** Lúc người học chấm trên máy; server kẹp về khoảng hợp lệ. */
+    reviewedAt: z.string().datetime(),
+  })
+  .strict();
+
+export const flashcardReviewResultSchema = z.object({
+  cardId: z.string(),
+  dueAt: z.string(),
+  intervalDays: z.number().int(),
+  repetitions: z.number().int(),
+  easeFactor: z.number(),
+  /** `false` khi lượt chấm cũ hơn lượt đã áp dụng: chỉ lưu lịch sử, không đổi lịch. */
+  applied: z.boolean(),
+});
+
+export type DueFlashcardsQuery = z.infer<typeof dueFlashcardsQuerySchema>;
+export type DueFlashcard = z.infer<typeof dueFlashcardSchema>;
+export type DueFlashcardsResponse = z.infer<typeof dueFlashcardsResponseSchema>;
+export type SubmitFlashcardReviewInput = z.infer<typeof submitFlashcardReviewSchema>;
+export type FlashcardReviewResult = z.infer<typeof flashcardReviewResultSchema>;

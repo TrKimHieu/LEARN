@@ -1,7 +1,7 @@
-import { ApiError } from '../../../core/exceptions/errors';
+import { ApiError } from '../exceptions/errors';
 
 /**
- * `Idempotency-Key` cho `POST /reviews/:questionId`. Cùng quy ước với
+ * `Idempotency-Key` cho các lượt chấm thẻ (ôn câu hỏi bài tập và ôn Thẻ). Cùng quy ước với
  * `learning/application/submit-idempotency.ts` (định dạng khoá, P2002 trên `(userId, idempotencyKey)`,
  * 409 `IDEMPOTENCY_KEY_REUSED`); viết lại ở đây vì luật `boundary/no-cross-module-import`
  * không cho domain này import file nội bộ của `learning`.

@@ -25,4 +25,5 @@
 - [ ] Text import against real PostgreSQL/staging from a development build.
 - [ ] SRS reviews against real PostgreSQL (backfill query, access filter, FOR UPDATE) and on device offline.
 - [x] Decks and flashcards CRUD (contracts 1.3.0, integration tests on real PostgreSQL sandbox).
-- [ ] Flashcard review (SM-2 via API), AI draft generation, quota: tickets 03 and 06.
+- [x] Flashcard review API (due list, grade, idempotency, clamping) with integration tests.
+- [ ] AI draft generation and quota: ticket 06.

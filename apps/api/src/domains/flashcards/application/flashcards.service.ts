@@ -1,21 +1,34 @@
+import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { Deck, Flashcard } from '@learn/db';
+import type { Deck, Flashcard, Prisma } from '@learn/db';
 import type {
   CreateDeckInput,
   CreateFlashcardInput,
   DeckDetailResponse,
   DeckListResponse,
   DeckSummary,
+  DueFlashcardsResponse,
   Flashcard as FlashcardDto,
+  FlashcardReviewResult,
   PatchDeckInput,
   PatchFlashcardInput,
+  SubmitFlashcardReviewInput,
 } from '@learn/contracts';
 import { ApiError } from '../../../core/exceptions/errors';
+import { idempotencyKeyReused, isIdempotencyKeyViolation } from '../../../core/srs/idempotency';
+import { reviewCard } from '../../../core/srs/review';
+import { PrismaService } from '../../../infra/services';
 import { FlashcardRepository, type DeckCounts } from '../infrastructure/flashcard.repository';
 
 const NO_DECK = 'Không tìm thấy bộ thẻ.';
 const NO_CARD = 'Không tìm thấy thẻ.';
 const NO_COURSE = 'Không tìm thấy khóa học.';
+
+/** Dấu vân tay body, để cùng key nhưng khác thẻ/mức nhớ/giờ chấm thì trả 409. */
+const reviewFingerprint = (cardId: string, input: SubmitFlashcardReviewInput): string =>
+  createHash('sha256')
+    .update(JSON.stringify([cardId, input.grade, input.reviewedAt]))
+    .digest('hex');
 
 const toDeckSummary = (deck: Deck, counts: DeckCounts): DeckSummary => ({
   id: deck.id,
@@ -41,7 +54,10 @@ const toFlashcard = (card: Flashcard): FlashcardDto => ({
 
 @Injectable()
 export class FlashcardsService {
-  constructor(private readonly repo: FlashcardRepository) {}
+  constructor(
+    private readonly repo: FlashcardRepository,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async createDeck(userId: string, input: CreateDeckInput): Promise<DeckSummary> {
     if (input.courseId) await this.assertCourse(userId, input.courseId);
@@ -103,6 +119,97 @@ export class FlashcardsService {
   async removeCard(userId: string, cardId: string): Promise<{ id: string }> {
     if (!(await this.repo.deleteCard(userId, cardId))) throw ApiError.notFound(NO_CARD);
     return { id: cardId };
+  }
+
+  /** Thẻ đến hạn của một bộ (hạn sớm nhất trước), kèm tổng số đến hạn và hạn kế tiếp. */
+  async dueCards(userId: string, deckId: string, limit: number): Promise<DueFlashcardsResponse> {
+    if (!(await this.repo.findDeck(userId, deckId))) throw ApiError.notFound(NO_DECK);
+    const now = new Date();
+    const [cards, dueCount, nextDueAt] = await Promise.all([
+      this.repo.listDue(userId, deckId, now, limit),
+      this.repo.countDue(userId, deckId, now),
+      this.repo.nextDueAt(userId, deckId, now),
+    ]);
+    return {
+      cards: cards.map(({ id, deckId: d, front, back, dueAt, intervalDays, repetitions }) => ({
+        id,
+        deckId: d,
+        front,
+        back,
+        dueAt: dueAt.toISOString(),
+        intervalDays,
+        repetitions,
+      })),
+      dueCount,
+      nextDueAt: nextDueAt?.toISOString() ?? null,
+    };
+  }
+
+  async review(
+    userId: string,
+    cardId: string,
+    input: SubmitFlashcardReviewInput,
+    idempotencyKey: string | null,
+  ): Promise<FlashcardReviewResult> {
+    const requestHash = idempotencyKey ? reviewFingerprint(cardId, input) : null;
+    if (idempotencyKey && requestHash) {
+      const prior = await this.replay(userId, idempotencyKey, requestHash);
+      if (prior) return prior;
+    }
+    if (!(await this.repo.findCard(userId, cardId))) throw ApiError.notFound(NO_CARD);
+
+    try {
+      return await this.prisma.client.$transaction(async (tx) => {
+        const card = await this.repo.lockCard(tx, userId, cardId);
+        if (!card) throw ApiError.notFound(NO_CARD);
+
+        const outcome = reviewCard(card, input.grade, new Date(input.reviewedAt), new Date());
+        if (outcome.applied) {
+          await this.repo.updateSchedule(tx, card.id, {
+            ...outcome.state,
+            dueAt: outcome.dueAt,
+            lastReviewedAt: outcome.reviewedAt,
+          });
+        }
+        const result: FlashcardReviewResult = {
+          cardId,
+          dueAt: outcome.dueAt.toISOString(),
+          intervalDays: outcome.state.intervalDays,
+          repetitions: outcome.state.repetitions,
+          easeFactor: outcome.state.easeFactor,
+          applied: outcome.applied,
+        };
+        await this.repo.createReview(tx, {
+          userId,
+          flashcardId: cardId,
+          grade: input.grade,
+          reviewedAt: outcome.reviewedAt,
+          idempotencyKey,
+          requestHash,
+          response: result as unknown as Prisma.InputJsonValue,
+        });
+        return result;
+      });
+    } catch (e) {
+      // Lượt song song cùng key đã ghi trước: trả kết quả của lượt đó thay vì lỗi.
+      if (idempotencyKey && requestHash && isIdempotencyKeyViolation(e)) {
+        const prior = await this.replay(userId, idempotencyKey, requestHash);
+        if (prior) return prior;
+      }
+      throw e;
+    }
+  }
+
+  /** Kết quả đã lưu của lượt chấm cùng key; `null` khi chưa có. Khác nội dung → 409. */
+  private async replay(
+    userId: string,
+    key: string,
+    requestHash: string,
+  ): Promise<FlashcardReviewResult | null> {
+    const prior = await this.repo.findReviewByKey(userId, key);
+    if (!prior) return null;
+    if (prior.requestHash !== requestHash || !prior.response) throw idempotencyKeyReused();
+    return prior.response as unknown as FlashcardReviewResult;
   }
 
   private async summary(userId: string, deck: Deck): Promise<DeckSummary> {

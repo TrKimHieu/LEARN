@@ -9,9 +9,9 @@ import type {
 } from '@learn/contracts';
 import { ApiError } from '../../../core/exceptions/errors';
 import { PrismaService } from '../../../infra/services';
-import { idempotencyKeyReused, isIdempotencyKeyViolation } from './review-idempotency';
+import { idempotencyKeyReused, isIdempotencyKeyViolation } from '../../../core/srs/idempotency';
 import { ReviewRepository } from '../infrastructure/review.repository';
-import { sm2 } from '../../../core/srs/sm2';
+import { reviewCard } from '../../../core/srs/review';
 
 const DAY_MS = 86_400_000;
 
@@ -117,50 +117,28 @@ export class ReviewsService {
         const card = await this.reviews.lockSchedule(tx, userId, questionId);
         if (!card) throw ApiError.notFound('Không tìm thấy thẻ ôn tập.');
 
-        // Giờ client không đáng tin: không vượt quá giờ server; thẻ chưa chấm lần nào thì không
-        // sớm hơn lúc thẻ được tạo. Cũ hơn lượt đã áp dụng thì chỉ lưu lịch sử.
-        const now = new Date();
-        const claimed = new Date(input.reviewedAt);
-        const capped = claimed.getTime() > now.getTime() ? now : claimed;
-        const last = card.lastReviewedAt;
-        const stale = last !== null && capped.getTime() < last.getTime();
-        const reviewedAt = last
-          ? capped
-          : new Date(Math.max(capped.getTime(), card.createdAt.getTime()));
-
-        let result: ReviewResult;
-        if (stale) {
-          result = {
-            questionId,
-            dueAt: card.dueAt.toISOString(),
-            intervalDays: card.intervalDays,
-            repetitions: card.repetitions,
-            easeFactor: card.easeFactor,
-            applied: false,
-          };
-        } else {
-          const next = sm2(card, input.grade);
-          const dueAt = new Date(reviewedAt.getTime() + next.intervalDays * DAY_MS);
+        const outcome = reviewCard(card, input.grade, new Date(input.reviewedAt), new Date());
+        if (outcome.applied) {
           await this.reviews.updateSchedule(tx, card.id, {
-            ...next,
-            dueAt,
-            lastReviewedAt: reviewedAt,
+            ...outcome.state,
+            dueAt: outcome.dueAt,
+            lastReviewedAt: outcome.reviewedAt,
           });
-          result = {
-            questionId,
-            dueAt: dueAt.toISOString(),
-            intervalDays: next.intervalDays,
-            repetitions: next.repetitions,
-            easeFactor: next.easeFactor,
-            applied: true,
-          };
         }
+        const result: ReviewResult = {
+          questionId,
+          dueAt: outcome.dueAt.toISOString(),
+          intervalDays: outcome.state.intervalDays,
+          repetitions: outcome.state.repetitions,
+          easeFactor: outcome.state.easeFactor,
+          applied: outcome.applied,
+        };
 
         await this.reviews.createReview(tx, {
           userId,
           questionId,
           grade: input.grade,
-          reviewedAt,
+          reviewedAt: outcome.reviewedAt,
           idempotencyKey,
           requestHash,
           response: result as unknown as Prisma.InputJsonValue,

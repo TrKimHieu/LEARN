@@ -1,17 +1,22 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
 import { z } from 'zod';
 import {
   createDeckSchema,
   createFlashcardSchema,
+  dueFlashcardsQuerySchema,
   patchDeckSchema,
   patchFlashcardSchema,
+  submitFlashcardReviewSchema,
   type CreateDeckInput,
   type CreateFlashcardInput,
+  type DueFlashcardsQuery,
   type PatchDeckInput,
   type PatchFlashcardInput,
+  type SubmitFlashcardReviewInput,
 } from '@learn/contracts';
 import { zodBody, zodParam } from '../../../core/exceptions/errors';
 import { Auth, CurrentUser, type UserContext } from '../../../core/security';
+import { parseIdempotencyKey } from '../../../core/srs/idempotency';
 import { FlashcardsService } from '../application/flashcards.service';
 
 const idSchema = z.string().uuid();
@@ -90,5 +95,26 @@ export class FlashcardsController {
     @Param('cardId', zodParam(idSchema)) cardId: string,
   ) {
     return this.flashcards.removeCard(user.userId, cardId);
+  }
+
+  @Get('decks/:deckId/due')
+  @Auth()
+  dueCards(
+    @CurrentUser() user: UserContext,
+    @Param('deckId', zodParam(idSchema)) deckId: string,
+    @Query(zodBody(dueFlashcardsQuerySchema)) query: DueFlashcardsQuery,
+  ) {
+    return this.flashcards.dueCards(user.userId, deckId, query.limit);
+  }
+
+  @Post('cards/:cardId/review')
+  @Auth()
+  review(
+    @CurrentUser() user: UserContext,
+    @Param('cardId', zodParam(idSchema)) cardId: string,
+    @Body(zodBody(submitFlashcardReviewSchema)) body: SubmitFlashcardReviewInput,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.flashcards.review(user.userId, cardId, body, parseIdempotencyKey(idempotencyKey));
   }
 }

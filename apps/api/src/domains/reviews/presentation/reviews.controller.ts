@@ -8,7 +8,7 @@ import {
 } from '@learn/contracts';
 import { zodBody, zodParam } from '../../../core/exceptions/errors';
 import { Auth, CurrentUser, type UserContext } from '../../../core/security';
-import { parseIdempotencyKey } from '../application/review-idempotency';
+import { parseIdempotencyKey } from '../../../core/srs/idempotency';
 import { ReviewsService } from '../application/reviews.service';
 
 const idSchema = z.string().uuid();

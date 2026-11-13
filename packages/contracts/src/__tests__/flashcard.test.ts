@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createDeckSchema, createFlashcardSchema, patchFlashcardSchema } from '../flashcard';
+import {
+  createDeckSchema,
+  createFlashcardSchema,
+  dueFlashcardsQuerySchema,
+  patchFlashcardSchema,
+  submitFlashcardReviewSchema,
+} from '../flashcard';
 
 const firstMessage = (r: { success: boolean; error?: { issues: { message: string }[] } }) =>
   r.error?.issues[0]?.message;
@@ -34,5 +40,24 @@ describe('flashcard contracts', () => {
       patchFlashcardSchema.safeParse({ deckId: '0d7b3d5c-3b1e-4a56-8d65-9a3b7c0f1e22' }).success,
     ).toBe(true);
     expect(patchFlashcardSchema.safeParse({ deckId: 'abc' }).success).toBe(false);
+  });
+  it('bounds the due list limit with a default of 20', () => {
+    expect(dueFlashcardsQuerySchema.parse({})).toEqual({ limit: 20 });
+    expect(dueFlashcardsQuerySchema.safeParse({ limit: '51' }).success).toBe(false);
+  });
+  it('accepts a grade with an ISO review time and nothing else', () => {
+    const at = '2026-11-13T08:00:00.000Z';
+    expect(submitFlashcardReviewSchema.safeParse({ grade: 'EASY', reviewedAt: at }).success).toBe(
+      true,
+    );
+    expect(
+      submitFlashcardReviewSchema.safeParse({ grade: 'PERFECT', reviewedAt: at }).success,
+    ).toBe(false);
+    expect(
+      submitFlashcardReviewSchema.safeParse({ grade: 'GOOD', reviewedAt: 'hôm qua' }).success,
+    ).toBe(false);
+    expect(
+      submitFlashcardReviewSchema.safeParse({ grade: 'GOOD', reviewedAt: at, dueAt: at }).success,
+    ).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { newId, Prisma } from '@learn/db';
-import { PrismaService } from '../../../infra/services';
+import { PrismaService, type Db } from '../../../infra/services';
 
 export interface DeckCounts {
   cardCount: number;
@@ -117,5 +117,78 @@ export class FlashcardRepository {
       where: { id: cardId, userId, deck: { deletedAt: null } },
     });
     return res.count > 0;
+  }
+
+  private dueWhere(userId: string, deckId: string, now: Date): Prisma.FlashcardWhereInput {
+    return { userId, deckId, deck: { deletedAt: null }, dueAt: { lte: now } };
+  }
+
+  /** Thẻ đến hạn của một bộ, hạn sớm nhất trước. */
+  listDue(userId: string, deckId: string, now: Date, limit: number) {
+    return this.prisma.client.flashcard.findMany({
+      where: this.dueWhere(userId, deckId, now),
+      orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+      take: limit,
+    });
+  }
+
+  countDue(userId: string, deckId: string, now: Date) {
+    return this.prisma.client.flashcard.count({ where: this.dueWhere(userId, deckId, now) });
+  }
+
+  async nextDueAt(userId: string, deckId: string, now: Date): Promise<Date | null> {
+    const next = await this.prisma.client.flashcard.findFirst({
+      where: { userId, deckId, deck: { deletedAt: null }, dueAt: { gt: now } },
+      orderBy: { dueAt: 'asc' },
+      select: { dueAt: true },
+    });
+    return next?.dueAt ?? null;
+  }
+
+  /** Khoá hàng thẻ (`FOR UPDATE`) rồi đọc: hai lượt chấm cùng thẻ xếp hàng, mỗi lượt thấy trạng thái lượt trước. */
+  async lockCard(tx: Prisma.TransactionClient, userId: string, cardId: string) {
+    await tx.$queryRaw`
+      SELECT "id" FROM "Flashcard" WHERE "id" = ${cardId} AND "userId" = ${userId} FOR UPDATE
+    `;
+    return tx.flashcard.findFirst({
+      where: { id: cardId, userId, deck: { deletedAt: null } },
+    });
+  }
+
+  findReviewByKey(userId: string, idempotencyKey: string, db: Db = this.prisma.client) {
+    return db.flashcardReview.findUnique({
+      where: { userId_idempotencyKey: { userId, idempotencyKey } },
+      select: { requestHash: true, response: true },
+    });
+  }
+
+  async createReview(
+    tx: Prisma.TransactionClient,
+    row: {
+      userId: string;
+      flashcardId: string;
+      grade: string;
+      reviewedAt: Date;
+      idempotencyKey: string | null;
+      requestHash: string | null;
+      response: Prisma.InputJsonValue;
+    },
+  ): Promise<void> {
+    await tx.flashcardReview.create({ data: { id: newId(), ...row } });
+  }
+
+  async updateSchedule(
+    tx: Prisma.TransactionClient,
+    id: string,
+    data: {
+      easeFactor: number;
+      intervalDays: number;
+      repetitions: number;
+      lapses: number;
+      dueAt: Date;
+      lastReviewedAt: Date;
+    },
+  ): Promise<void> {
+    await tx.flashcard.update({ where: { id }, data });
   }
 }
