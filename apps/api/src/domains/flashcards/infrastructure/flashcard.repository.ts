@@ -63,7 +63,7 @@ export class FlashcardRepository {
   }
 
   /** Số thẻ theo bộ trong một truy vấn; bộ không có thẻ nào lấy 0. */
-  async countsByDeck(deckIds: string[]): Promise<Map<string, DeckCounts>> {
+  async countsByDeck(userId: string, deckIds: string[]): Promise<Map<string, DeckCounts>> {
     const out = new Map<string, DeckCounts>(deckIds.map((id) => [id, { ...EMPTY_COUNTS }]));
     if (deckIds.length === 0) return out;
     const rows = await this.prisma.client.$queryRaw<Array<{ deckId: string } & DeckCounts>>(
@@ -74,16 +74,16 @@ export class FlashcardRepository {
                (COUNT(*) FILTER (WHERE "lastReviewedAt" IS NOT NULL))::int AS "learningCount",
                (COUNT(*) FILTER (WHERE "dueAt" <= NOW()))::int AS "dueCount"
         FROM "Flashcard"
-        WHERE "deckId" IN (${Prisma.join(deckIds)})
+        WHERE "userId" = ${userId} AND "deckId" IN (${Prisma.join(deckIds)})
         GROUP BY "deckId"`,
     );
     for (const { deckId, ...counts } of rows) out.set(deckId, counts);
     return out;
   }
 
-  listCards(deckId: string) {
+  listCards(userId: string, deckId: string) {
     return this.prisma.client.flashcard.findMany({
-      where: { deckId },
+      where: { deckId, userId, deck: { deletedAt: null } },
       orderBy: { createdAt: 'asc' },
     });
   }

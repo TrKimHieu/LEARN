@@ -46,12 +46,15 @@ export class FlashcardsService {
   async createDeck(userId: string, input: CreateDeckInput): Promise<DeckSummary> {
     if (input.courseId) await this.assertCourse(userId, input.courseId);
     const deck = await this.repo.createDeck(userId, input.title, input.courseId ?? null);
-    return this.summary(deck);
+    return this.summary(userId, deck);
   }
 
   async listDecks(userId: string): Promise<DeckListResponse> {
     const decks = await this.repo.listDecks(userId);
-    const counts = await this.repo.countsByDeck(decks.map((d) => d.id));
+    const counts = await this.repo.countsByDeck(
+      userId,
+      decks.map((d) => d.id),
+    );
     return { decks: decks.map((d) => toDeckSummary(d, counts.get(d.id)!)) };
   }
 
@@ -59,7 +62,7 @@ export class FlashcardsService {
     if (input.courseId) await this.assertCourse(userId, input.courseId);
     const deck = await this.repo.updateDeck(userId, deckId, input);
     if (!deck) throw ApiError.notFound(NO_DECK);
-    return this.summary(deck);
+    return this.summary(userId, deck);
   }
 
   async removeDeck(userId: string, deckId: string): Promise<{ id: string }> {
@@ -70,8 +73,8 @@ export class FlashcardsService {
   async deckWithCards(userId: string, deckId: string): Promise<DeckDetailResponse> {
     const deck = await this.repo.findDeck(userId, deckId);
     if (!deck) throw ApiError.notFound(NO_DECK);
-    const cards = await this.repo.listCards(deckId);
-    return { deck: await this.summary(deck), cards: cards.map(toFlashcard) };
+    const cards = await this.repo.listCards(userId, deckId);
+    return { deck: await this.summary(userId, deck), cards: cards.map(toFlashcard) };
   }
 
   async createCard(
@@ -102,8 +105,8 @@ export class FlashcardsService {
     return { id: cardId };
   }
 
-  private async summary(deck: Deck): Promise<DeckSummary> {
-    const counts = await this.repo.countsByDeck([deck.id]);
+  private async summary(userId: string, deck: Deck): Promise<DeckSummary> {
+    const counts = await this.repo.countsByDeck(userId, [deck.id]);
     return toDeckSummary(deck, counts.get(deck.id)!);
   }
 
