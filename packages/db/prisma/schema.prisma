@@ -599,8 +599,8 @@ model Flashcard {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck    Deck              @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews FlashcardReview[]
 
   @@index([deckId])

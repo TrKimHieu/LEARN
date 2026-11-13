@@ -131,14 +131,14 @@ export class FlashcardsService {
       this.repo.nextDueAt(userId, deckId, now),
     ]);
     return {
-      cards: cards.map(({ id, deckId: d, front, back, dueAt, intervalDays, repetitions }) => ({
-        id,
-        deckId: d,
-        front,
-        back,
-        dueAt: dueAt.toISOString(),
-        intervalDays,
-        repetitions,
+      cards: cards.map((c) => ({
+        id: c.id,
+        deckId: c.deckId,
+        front: c.front,
+        back: c.back,
+        dueAt: c.dueAt.toISOString(),
+        intervalDays: c.intervalDays,
+        repetitions: c.repetitions,
       })),
       dueCount,
       nextDueAt: nextDueAt?.toISOString() ?? null,

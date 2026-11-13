@@ -1,10 +1,10 @@
 import { ApiError } from '../exceptions/errors';
 
 /**
- * `Idempotency-Key` cho các lượt chấm thẻ (ôn câu hỏi bài tập và ôn Thẻ). Cùng quy ước với
- * `learning/application/submit-idempotency.ts` (định dạng khoá, P2002 trên `(userId, idempotencyKey)`,
- * 409 `IDEMPOTENCY_KEY_REUSED`); viết lại ở đây vì luật `boundary/no-cross-module-import`
- * không cho domain này import file nội bộ của `learning`.
+ * `Idempotency-Key` cho các lượt chấm thẻ (ôn câu hỏi bài tập và ôn Thẻ): định dạng khoá, nhận biết
+ * P2002 trên `(userId, idempotencyKey)` và 409 `IDEMPOTENCY_KEY_REUSED`. Đặt ở `core` để hai domain
+ * dùng chung mà không import file nội bộ của nhau (`boundary/no-cross-module-import`).
+ * `learning/application/submit-idempotency.ts` là bản riêng cùng quy ước cho lượt nộp bài.
  */
 const KEY_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 
