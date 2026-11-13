@@ -8,6 +8,7 @@ import { CoursesModule } from './domains/courses/courses.module';
 import { DocumentsModule } from './domains/documents/documents.module';
 import { LearningModule } from './domains/learning/learning.module';
 import { ReviewsModule } from './domains/reviews/reviews.module';
+import { FlashcardsModule } from './domains/flashcards/flashcards.module';
 import { SubscriptionsModule } from './domains/subscriptions/subscriptions.module';
 import { AiModule } from './domains/ai/ai.module';
 import { AdminModule } from './domains/admin/admin.module';
@@ -23,6 +24,7 @@ import { AdminModule } from './domains/admin/admin.module';
     DocumentsModule,
     LearningModule,
     ReviewsModule,
+    FlashcardsModule,
     SubscriptionsModule,
     AiModule,
     AdminModule,

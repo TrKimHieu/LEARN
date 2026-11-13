@@ -36,3 +36,5 @@ Submit idempotency: requested so the mobile offline outbox can resend exercise s
 Text import (R3): user chose full on-device extraction for mobile; original-file upload stays disabled on mobile and unchanged for web. Branch feat/text-import from origin/main 83b22ab. Contracts bumped to 1.1.0 within major 1. No deploy.
 
 SM-2 shared (2026-11-13): refactor only. Moved `sm2.ts` + `sm2.test.ts` into `apps/api/src/core/srs`, updated the single import in reviews.service. Baseline reviews tests (25) green before and after; full unit run 315 green; typecheck, eslint and prettier clean on touched paths. No contracts or schema change.
+
+Flashcards ticket 02: contracts first (flashcard.ts + 4 unit tests), then integration test written red (404 on missing routes) before the module. Dev API must run from this worktree for the integration suite (the main-tree backend lacks the migrations and routes). Verified: tsc, 315+ unit tests, integration 9/9, contracts:consumer passed.

@@ -34,6 +34,8 @@ model User {
   submissions         Submission[]
   cardSchedules       CardSchedule[]
   cardReviews         CardReview[]
+  decks               Deck[]
+  flashcards          Flashcard[]
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   usage               UsageCounter[]
@@ -93,6 +95,7 @@ model Course {
   lessons   Lesson[]
   aiJobs    AIJob[]
   progress  LearningProgress[]
+  decks     Deck[]
 
   @@index([ownerId, deletedAt, updatedAt])
 }
@@ -559,4 +562,45 @@ enum CourseMemberRole {
   OWNER
   EDITOR
   VIEWER
+}
+
+/// Bộ thẻ do người học tự quản lý; gắn tùy chọn với một khóa học. Xóa mềm.
+model Deck {
+  id        String    @id @default(uuid())
+  userId    String
+  courseId  String?
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course     Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  flashcards Flashcard[]
+
+  @@index([userId, deletedAt, updatedAt])
+}
+
+/// Thẻ (mặt trước/mặt sau) kèm lịch SM-2 của chính nó, tách khỏi CardSchedule của câu hỏi bài tập.
+/// Thẻ tạo xong đến hạn ngay (`dueAt` = lúc tạo).
+model Flashcard {
+  id             String    @id @default(uuid())
+  deckId         String
+  userId         String
+  front          String
+  back           String
+  easeFactor     Float     @default(2.5)
+  intervalDays   Int       @default(0)
+  repetitions    Int       @default(0)
+  lapses         Int       @default(0)
+  dueAt          DateTime
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deckId])
+  @@index([userId, dueAt])
 }

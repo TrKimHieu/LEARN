@@ -16,3 +16,4 @@ export * from './admin';
 export * from './meta';
 export * from './version';
 export * from './review';
+export * from './flashcard';
