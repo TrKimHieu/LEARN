@@ -11,7 +11,7 @@ import { ApiError } from '../../../core/exceptions/errors';
 import { PrismaService } from '../../../infra/services';
 import { idempotencyKeyReused, isIdempotencyKeyViolation } from './review-idempotency';
 import { ReviewRepository } from '../infrastructure/review.repository';
-import { sm2 } from './sm2';
+import { sm2 } from '../../../core/srs/sm2';
 
 const DAY_MS = 86_400_000;
 

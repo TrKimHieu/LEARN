@@ -34,3 +34,5 @@ Review correction: API readiness returns HTTP200 even for degraded dependencies.
 Submit idempotency: requested so the mobile offline outbox can resend exercise submissions. Branch feat/submit-idempotency from origin/main 1138b13 in a separate worktree (local checkout has unrelated uncommitted infra edits). Error code kept as existing CONFLICT plus meta.reason to avoid a contracts hash change. User asked to stop at PR; no deploy.
 
 Text import (R3): user chose full on-device extraction for mobile; original-file upload stays disabled on mobile and unchanged for web. Branch feat/text-import from origin/main 83b22ab. Contracts bumped to 1.1.0 within major 1. No deploy.
+
+SM-2 shared (2026-11-13): refactor only. Moved `sm2.ts` + `sm2.test.ts` into `apps/api/src/core/srs`, updated the single import in reviews.service. Baseline reviews tests (25) green before and after; full unit run 315 green; typecheck, eslint and prettier clean on touched paths. No contracts or schema change.
