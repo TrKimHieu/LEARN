@@ -40,3 +40,5 @@ SM-2 shared (2026-11-13): refactor only. Moved `sm2.ts` + `sm2.test.ts` into `ap
 Flashcards ticket 02: contracts first (flashcard.ts + 4 unit tests), then integration test written red (404 on missing routes) before the module. Dev API must run from this worktree for the integration suite (the main-tree backend lacks the migrations and routes). Verified: tsc, 315+ unit tests, integration 9/9, contracts:consumer passed.
 
 Flashcard review ticket 03: wrote core/srs/review.test.ts first (red), then reviewCard; integration test red on 404 before routes. Refactored reviews.service onto reviewCard guarded by existing 25 tests. Dev API must be stopped before `prisma generate` (query engine DLL lock on Windows).
+
+On today ticket 04: integration test red on 404, then dueCards scoped by deckId|null. Merged flashcard integration tests into one file after the combined run exhausted the register rate limit; tsx watch restarts the dev API when test files are saved, so rerun the suite after saving.

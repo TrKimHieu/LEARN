@@ -121,9 +121,13 @@ export class FlashcardsService {
     return { id: cardId };
   }
 
-  /** Thẻ đến hạn của một bộ (hạn sớm nhất trước), kèm tổng số đến hạn và hạn kế tiếp. */
-  async dueCards(userId: string, deckId: string, limit: number): Promise<DueFlashcardsResponse> {
-    if (!(await this.repo.findDeck(userId, deckId))) throw ApiError.notFound(NO_DECK);
+  /** Thẻ đến hạn của một bộ, hoặc mọi bộ khi `deckId = null` (hạn sớm nhất trước), kèm tổng số và hạn kế tiếp. */
+  async dueCards(
+    userId: string,
+    deckId: string | null,
+    limit: number,
+  ): Promise<DueFlashcardsResponse> {
+    if (deckId && !(await this.repo.findDeck(userId, deckId))) throw ApiError.notFound(NO_DECK);
     const now = new Date();
     const [cards, dueCount, nextDueAt] = await Promise.all([
       this.repo.listDue(userId, deckId, now, limit),

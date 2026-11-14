@@ -97,6 +97,16 @@ export class FlashcardsController {
     return this.flashcards.removeCard(user.userId, cardId);
   }
 
+  /** Ôn hôm nay: thẻ đến hạn của mọi bộ. */
+  @Get('flashcards/due')
+  @Auth()
+  dueAllCards(
+    @CurrentUser() user: UserContext,
+    @Query(zodBody(dueFlashcardsQuerySchema)) query: DueFlashcardsQuery,
+  ) {
+    return this.flashcards.dueCards(user.userId, null, query.limit);
+  }
+
   @Get('decks/:deckId/due')
   @Auth()
   dueCards(

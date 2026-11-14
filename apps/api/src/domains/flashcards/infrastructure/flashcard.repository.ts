@@ -119,26 +119,29 @@ export class FlashcardRepository {
     return res.count > 0;
   }
 
-  private dueWhere(userId: string, deckId: string, now: Date): Prisma.FlashcardWhereInput {
-    return { userId, deckId, deck: { deletedAt: null }, dueAt: { lte: now } };
+  /** `deckId = null` là mọi bộ của người dùng (Ôn hôm nay). */
+  private scope(userId: string, deckId: string | null): Prisma.FlashcardWhereInput {
+    return { userId, ...(deckId ? { deckId } : {}), deck: { deletedAt: null } };
   }
 
-  /** Thẻ đến hạn của một bộ, hạn sớm nhất trước. */
-  listDue(userId: string, deckId: string, now: Date, limit: number) {
+  /** Thẻ đến hạn của một bộ (hoặc mọi bộ), hạn sớm nhất trước. */
+  listDue(userId: string, deckId: string | null, now: Date, limit: number) {
     return this.prisma.client.flashcard.findMany({
-      where: this.dueWhere(userId, deckId, now),
+      where: { ...this.scope(userId, deckId), dueAt: { lte: now } },
       orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
       take: limit,
     });
   }
 
-  countDue(userId: string, deckId: string, now: Date) {
-    return this.prisma.client.flashcard.count({ where: this.dueWhere(userId, deckId, now) });
+  countDue(userId: string, deckId: string | null, now: Date) {
+    return this.prisma.client.flashcard.count({
+      where: { ...this.scope(userId, deckId), dueAt: { lte: now } },
+    });
   }
 
-  async nextDueAt(userId: string, deckId: string, now: Date): Promise<Date | null> {
+  async nextDueAt(userId: string, deckId: string | null, now: Date): Promise<Date | null> {
     const next = await this.prisma.client.flashcard.findFirst({
-      where: { userId, deckId, deck: { deletedAt: null }, dueAt: { gt: now } },
+      where: { ...this.scope(userId, deckId), dueAt: { gt: now } },
       orderBy: { dueAt: 'asc' },
       select: { dueAt: true },
     });
