@@ -267,8 +267,6 @@ afterAll(async () => {
     );
 
   describe('Ôn một Bộ thẻ', () => {
-    beforeAll(async () => {});
-
     it('liệt kê thẻ đến hạn của bộ, cắt theo limit nhưng dueCount vẫn là tổng', async () => {
       const deck = await createDeck(owner, 'Đến hạn');
       for (let n = 1; n <= 3; n++) await createCard(owner, deck.id, n);
@@ -460,8 +458,6 @@ afterAll(async () => {
         await prisma.deck.deleteMany({ where: { userId: s.userId } });
       }
     });
-
-    beforeAll(async () => {});
 
     it('người dùng chưa có thẻ nào: không có thẻ, không có hạn kế tiếp', async () => {
       expect(await dueAll(owner)).toEqual({ cards: [], dueCount: 0, nextDueAt: null });
