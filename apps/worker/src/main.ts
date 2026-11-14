@@ -11,11 +11,16 @@ import {
   LessonGenerateProcessor,
   type LessonGenerateJobData,
 } from './processors/lesson-generate.processor';
+import {
+  FlashcardGenerateProcessor,
+  type FlashcardGenerateJobData,
+} from './processors/flashcard-generate.processor';
 import { env } from './environment';
 
 const QUEUE_NAMES = {
   documentExtract: 'document-extract',
   lessonGenerate: 'lesson-generate',
+  flashcardGenerate: 'flashcard-generate',
 } as const;
 
 async function bootstrap(): Promise<void> {
@@ -25,6 +30,7 @@ async function bootstrap(): Promise<void> {
 
   const documentExtract = app.get(DocumentExtractProcessor);
   const lessonGenerate = app.get(LessonGenerateProcessor);
+  const flashcardGenerate = app.get(FlashcardGenerateProcessor);
   const connection = { url: env.REDIS_URL };
 
   // Concurrency + queue theo HANDBOOK §9.1.
@@ -37,6 +43,11 @@ async function bootstrap(): Promise<void> {
     new Worker<LessonGenerateJobData>(
       QUEUE_NAMES.lessonGenerate,
       (job) => lessonGenerate.process(job.data),
+      { connection, concurrency: 2 },
+    ),
+    new Worker<FlashcardGenerateJobData>(
+      QUEUE_NAMES.flashcardGenerate,
+      (job) => flashcardGenerate.process(job.data),
       { connection, concurrency: 2 },
     ),
   ];

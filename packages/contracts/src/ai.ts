@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const aiJobStatusSchema = z.enum(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED']);
 
 export const aiJobTypeSchema = z.enum([
+  'GENERATE_FLASHCARDS',
   'EXTRACT_DOCUMENT',
   'GENERATE_LESSONS',
   'REGENERATE_LESSON',
@@ -55,6 +56,8 @@ export const aiJobStreamEventSchema = z.object({
   code: z.string().optional(),
   message: z.string().optional(),
   lessonIds: z.array(z.string()).optional(),
+  /** Số thẻ nháp đã sinh (job GENERATE_FLASHCARDS). */
+  draftCount: z.number().int().optional(),
   lessonCount: z.number().int().optional(),
 });
 

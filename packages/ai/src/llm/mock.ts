@@ -1,5 +1,6 @@
 import type { LlmGenerateParams, LlmGenerationResult, LlmProvider } from './provider';
 import { findMatchingFixture, type MockFixtures } from './fixtures';
+import { FLASHCARD_MARKER } from '../prompts/flashcard';
 
 /**
  * Mock provider — HANDBOOK §15.4. Dùng cho CI, unit test, E2E và demo local khi chưa có LLM_API_KEY.
@@ -33,6 +34,7 @@ export class MockLlmProvider implements LlmProvider {
   }
 
   private build(prompt: string): string {
+    if (prompt.includes(FLASHCARD_MARKER)) return buildFlashcards(prompt);
     if (prompt.includes('DANH SÁCH CHUNK (heading path')) {
       return this.buildOutline(prompt);
     }
@@ -194,4 +196,23 @@ function fallbackLessonJson(): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Thẻ mock cho bản demo và kiểm thử: mỗi câu trong nguồn thành một thẻ (mặt trước hỏi về câu, mặt sau là
+ * chính câu đó), tối đa số thẻ prompt yêu cầu. Bám nguồn nên luôn qua được bộ lọc.
+ */
+function buildFlashcards(prompt: string): string {
+  const limit = Number(/Số thẻ tối đa: (\d+)/.exec(prompt)?.[1] ?? '5');
+  const source = prompt.split('---- NỘI DUNG NGUỒN ----')[1]?.split('---- HẾT NGUỒN ----')[0] ?? '';
+  const sentences = source
+    .replace(/^#{1,6}\s.*$/gm, '') // tiêu đề markdown không phải câu để ôn
+    .split(/(?<=[.!?])\s+/)
+    .map((x) => x.trim())
+    .filter((x) => x.length > 8);
+  const cards = sentences.slice(0, limit).map((sentence, i) => ({
+    front: `Câu ${i + 1}: ${sentence.slice(0, 40).replace(/[.!?]$/, '')}… là gì?`,
+    back: sentence,
+  }));
+  return JSON.stringify({ cards });
 }

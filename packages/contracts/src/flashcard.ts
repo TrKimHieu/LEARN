@@ -134,3 +134,58 @@ export type DueFlashcard = z.infer<typeof dueFlashcardSchema>;
 export type DueFlashcardsResponse = z.infer<typeof dueFlashcardsResponseSchema>;
 export type SubmitFlashcardReviewInput = z.infer<typeof submitFlashcardReviewSchema>;
 export type FlashcardReviewResult = z.infer<typeof flashcardReviewResultSchema>;
+
+// Sinh Thẻ nháp bằng AI (job GENERATE_FLASHCARDS) và duyệt nháp.
+export const generateFlashcardsSchema = z
+  .object({
+    lessonId: z.string().uuid().optional(),
+    documentId: z.string().uuid().optional(),
+    /** Số thẻ tối đa muốn nhận. */
+    count: z.number().int().min(1).max(30).default(10),
+  })
+  .strict()
+  .refine((v) => Boolean(v.lessonId) !== Boolean(v.documentId), {
+    message: 'Chọn đúng một nguồn: một bài học hoặc một tài liệu.',
+  });
+
+export const flashcardDraftSchema = z.object({
+  id: z.string(),
+  courseId: z.string(),
+  aiJobId: z.string(),
+  front: z.string(),
+  back: z.string(),
+  createdAt: z.string(),
+});
+
+export const flashcardDraftListSchema = z.object({ drafts: z.array(flashcardDraftSchema) });
+
+export const flashcardDraftQuerySchema = z.object({ aiJobId: z.string().uuid().optional() });
+
+export const patchFlashcardDraftSchema = z
+  .object({ front: cardFrontSchema.optional(), back: cardBackSchema.optional() })
+  .strict();
+
+/** Chấp nhận nháp vào một bộ có sẵn (`deckId`) hoặc bộ mới (`newDeckTitle`). */
+export const acceptFlashcardDraftsSchema = z
+  .object({
+    draftIds: z.array(z.string().uuid()).min(1).max(100),
+    deckId: z.string().uuid().optional(),
+    newDeckTitle: deckTitleSchema.optional(),
+  })
+  .strict()
+  .refine((v) => Boolean(v.deckId) !== Boolean(v.newDeckTitle), {
+    message: 'Chọn một bộ thẻ có sẵn hoặc đặt tên bộ thẻ mới.',
+  });
+
+export const acceptFlashcardDraftsResultSchema = z.object({
+  deckId: z.string(),
+  accepted: z.number().int(),
+});
+
+export type GenerateFlashcardsInput = z.infer<typeof generateFlashcardsSchema>;
+export type FlashcardDraft = z.infer<typeof flashcardDraftSchema>;
+export type FlashcardDraftList = z.infer<typeof flashcardDraftListSchema>;
+export type FlashcardDraftQuery = z.infer<typeof flashcardDraftQuerySchema>;
+export type PatchFlashcardDraftInput = z.infer<typeof patchFlashcardDraftSchema>;
+export type AcceptFlashcardDraftsInput = z.infer<typeof acceptFlashcardDraftsSchema>;
+export type AcceptFlashcardDraftsResult = z.infer<typeof acceptFlashcardDraftsResultSchema>;

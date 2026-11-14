@@ -194,4 +194,24 @@ export class FlashcardRepository {
   ): Promise<void> {
     await tx.flashcard.update({ where: { id }, data });
   }
+
+  /** Thẻ nháp của người dùng, mới nhất trước; `aiJobId` để chỉ xem nháp của một lượt sinh. */
+  listDrafts(userId: string, aiJobId?: string) {
+    return this.prisma.client.flashcardDraft.findMany({
+      where: { userId, ...(aiJobId ? { aiJobId } : {}) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+  }
+
+  async updateDraft(userId: string, id: string, data: { front?: string; back?: string }) {
+    const res = await this.prisma.client.flashcardDraft.updateMany({ where: { id, userId }, data });
+    return res.count === 0
+      ? null
+      : this.prisma.client.flashcardDraft.findFirst({ where: { id, userId } });
+  }
+
+  async deleteDraft(userId: string, id: string): Promise<boolean> {
+    const res = await this.prisma.client.flashcardDraft.deleteMany({ where: { id, userId } });
+    return res.count > 0;
+  }
 }

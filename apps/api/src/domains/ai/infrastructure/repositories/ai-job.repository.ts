@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { newId } from '@learn/db';
 import { PrismaService, type Db } from '../../../../infra/services';
 
-export type AIJobTypeName = 'EXTRACT_DOCUMENT' | 'GENERATE_LESSONS' | 'REGENERATE_LESSON';
+export type AIJobTypeName =
+  'EXTRACT_DOCUMENT' | 'GENERATE_LESSONS' | 'REGENERATE_LESSON' | 'GENERATE_FLASHCARDS';
 
 @Injectable()
 export class AIJobRepository {
@@ -21,18 +22,19 @@ export class AIJobRepository {
     });
   }
 
-  /** Job GENERATE_LESSONS đang chạy cho (course, params) — chống nộp trùng khi tạo. */
+  /** Job sinh nội dung đang chạy cho (course, type, params) — chống nộp trùng khi tạo. */
   findPendingGenerate(
     courseId: string,
     userId: string,
     params: Record<string, unknown>,
     db: Db = this.prisma.client,
+    type: AIJobTypeName = 'GENERATE_LESSONS',
   ) {
     return db.aIJob.findFirst({
       where: {
         courseId,
         requestedById: userId,
-        type: 'GENERATE_LESSONS',
+        type,
         status: { in: ['QUEUED', 'RUNNING'] },
         inputParams: { equals: params as never },
       },
@@ -44,6 +46,7 @@ export class AIJobRepository {
       courseId: string;
       requestedById: string;
       type: AIJobTypeName;
+      documentId?: string | null;
       idempotencyKey: string;
       params: Record<string, unknown>;
       queuedAt: Date;
@@ -56,10 +59,19 @@ export class AIJobRepository {
         courseId: data.courseId,
         requestedById: data.requestedById,
         type: data.type,
+        documentId: data.documentId ?? null,
         idempotencyKey: data.idempotencyKey,
         inputParams: data.params as never,
         queuedAt: data.queuedAt,
       },
+    });
+  }
+
+  /** Bài học chưa xóa thuộc đúng khóa học (khóa học đã được kiểm chủ sở hữu ở service). */
+  lessonInCourse(lessonId: string, courseId: string, db: Db = this.prisma.client) {
+    return db.lesson.findFirst({
+      where: { id: lessonId, courseId, deletedAt: null },
+      select: { id: true },
     });
   }
 

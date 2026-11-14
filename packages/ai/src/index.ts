@@ -12,3 +12,5 @@ export * from './prompts/outline';
 export * from './prompts/lesson';
 export * from './schemas/output';
 export * from './validator/validate';
+export * from './prompts/flashcard';
+export * from './validator/flashcards';

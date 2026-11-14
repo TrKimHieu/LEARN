@@ -37,6 +37,7 @@ model User {
   decks               Deck[]
   flashcards          Flashcard[]
   flashcardReviews    FlashcardReview[]
+  flashcardDrafts     FlashcardDraft[]
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   usage               UsageCounter[]
@@ -176,16 +177,18 @@ model AIJob {
   startedAt      DateTime?
   finishedAt     DateTime?
 
-  course    Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  document  Document?       @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  requester User            @relation(fields: [requestedById], references: [id])
+  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  document  Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  requester User             @relation(fields: [requestedById], references: [id])
   runs      GenerationRun[]
+  drafts    FlashcardDraft[]
 
   @@index([courseId, status])
   @@index([status, queuedAt])
 }
 
 enum AIJobType {
+  GENERATE_FLASHCARDS
   EXTRACT_DOCUMENT
   GENERATE_LESSONS
   REGENERATE_LESSON
@@ -624,4 +627,21 @@ model FlashcardReview {
 
   @@unique([userId, idempotencyKey])
   @@index([flashcardId, reviewedAt])
+}
+
+/// Thẻ nháp do AI sinh: chưa thuộc bộ thẻ nào và chưa có lịch ôn. Chấp nhận thì thành `Flashcard` rồi xóa nháp.
+model FlashcardDraft {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  aiJobId   String
+  front     String
+  back      String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiJob AIJob @relation(fields: [aiJobId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([aiJobId])
 }

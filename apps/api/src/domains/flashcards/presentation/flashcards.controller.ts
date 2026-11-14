@@ -2,15 +2,21 @@ import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } fro
 import { z } from 'zod';
 import {
   createDeckSchema,
+  acceptFlashcardDraftsSchema,
   createFlashcardSchema,
   dueFlashcardsQuerySchema,
+  flashcardDraftQuerySchema,
   patchDeckSchema,
+  patchFlashcardDraftSchema,
   patchFlashcardSchema,
   submitFlashcardReviewSchema,
+  type AcceptFlashcardDraftsInput,
   type CreateDeckInput,
   type CreateFlashcardInput,
   type DueFlashcardsQuery,
+  type FlashcardDraftQuery,
   type PatchDeckInput,
+  type PatchFlashcardDraftInput,
   type PatchFlashcardInput,
   type SubmitFlashcardReviewInput,
 } from '@learn/contracts';
@@ -126,5 +132,43 @@ export class FlashcardsController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     return this.flashcards.review(user.userId, cardId, body, parseIdempotencyKey(idempotencyKey));
+  }
+
+  @Get('flashcards/drafts')
+  @Auth()
+  listDrafts(
+    @CurrentUser() user: UserContext,
+    @Query(zodBody(flashcardDraftQuerySchema)) query: FlashcardDraftQuery,
+  ) {
+    return this.flashcards.listDrafts(user.userId, query.aiJobId);
+  }
+
+  // Literal `accept` trước `drafts/:draftId` để không bị tham số động nuốt.
+  @Post('flashcards/drafts/accept')
+  @Auth()
+  acceptDrafts(
+    @CurrentUser() user: UserContext,
+    @Body(zodBody(acceptFlashcardDraftsSchema)) body: AcceptFlashcardDraftsInput,
+  ) {
+    return this.flashcards.acceptDrafts(user.userId, body);
+  }
+
+  @Patch('flashcards/drafts/:draftId')
+  @Auth()
+  patchDraft(
+    @CurrentUser() user: UserContext,
+    @Param('draftId', zodParam(idSchema)) draftId: string,
+    @Body(zodBody(patchFlashcardDraftSchema)) body: PatchFlashcardDraftInput,
+  ) {
+    return this.flashcards.patchDraft(user.userId, draftId, body);
+  }
+
+  @Delete('flashcards/drafts/:draftId')
+  @Auth()
+  removeDraft(
+    @CurrentUser() user: UserContext,
+    @Param('draftId', zodParam(idSchema)) draftId: string,
+  ) {
+    return this.flashcards.removeDraft(user.userId, draftId);
   }
 }

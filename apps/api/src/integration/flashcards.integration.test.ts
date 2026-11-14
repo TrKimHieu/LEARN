@@ -60,6 +60,11 @@ beforeAll(async () => {
 afterAll(async () => {
   for (const s of [owner, other]) {
     if (!s) continue;
+    await prisma.flashcardDraft.deleteMany({ where: { userId: s.userId } });
+    await prisma.aIJob.deleteMany({ where: { requestedById: s.userId } });
+    await prisma.documentChunk.deleteMany({ where: { document: { uploaderId: s.userId } } });
+    await prisma.document.deleteMany({ where: { uploaderId: s.userId } });
+    await prisma.lesson.deleteMany({ where: { course: { ownerId: s.userId } } });
     await prisma.flashcardReview.deleteMany({ where: { userId: s.userId } });
     await prisma.flashcard.deleteMany({ where: { userId: s.userId } });
     await prisma.deck.deleteMany({ where: { userId: s.userId } });
@@ -509,6 +514,294 @@ afterAll(async () => {
     it('limit ngoài khoảng trả 400, thiếu đăng nhập trả 401', async () => {
       expect((await call(owner, 'GET', '/flashcards/due?limit=51')).status).toBe(400);
       expect((await fetch(`${API_URL}/api/v1/flashcards/due`)).status).toBe(401);
+    });
+  });
+}
+
+// ── Sinh Thẻ nháp bằng AI (ticket 06) ─────────────────────────────────────────────────────────
+{
+  interface JobSummary {
+    id: string;
+    type: string;
+    status: string;
+    courseId: string;
+  }
+  const generate = (s: Session, courseId: string, body: unknown) =>
+    call(s, 'POST', `/ai/courses/${courseId}/generate-flashcards`, body);
+  const jobCount = (courseId: string) =>
+    prisma.aIJob.count({ where: { courseId, type: 'GENERATE_FLASHCARDS' } });
+
+  async function courseWithSources(s: Session, title: string) {
+    const created = await call(s, 'POST', '/courses', { title, language: 'vi' });
+    const courseId = ((await created.json()) as { id: string }).id;
+    const lesson = await prisma.lesson.create({
+      data: {
+        courseId,
+        orderIndex: 0,
+        title: 'Bài 1',
+        contentMd: 'TCP là giao thức hướng kết nối.',
+      },
+    });
+    const mk = (status: 'EXTRACTED' | 'UPLOADED') =>
+      prisma.document.create({
+        data: {
+          courseId,
+          uploaderId: s.userId,
+          filename: `${status}.md`,
+          mimeType: 'text/markdown',
+          sizeBytes: 10,
+          storageKey: `${s.userId}/${status}-${Date.now()}`,
+          checksumSha256: 'test',
+          status,
+        },
+      });
+    return { courseId, lesson, extracted: await mk('EXTRACTED'), pending: await mk('UPLOADED') };
+  }
+
+  describe('Sinh thẻ nháp: tạo job', () => {
+    let mine: Awaited<ReturnType<typeof courseWithSources>>;
+    let theirs: Awaited<ReturnType<typeof courseWithSources>>;
+
+    beforeAll(async () => {
+      mine = await courseWithSources(owner, 'Khóa sinh thẻ');
+      theirs = await courseWithSources(other, 'Khóa người khác');
+    });
+
+    it('từ một bài học: 201, job GENERATE_FLASHCARDS đang xếp hàng', async () => {
+      const res = await generate(owner, mine.courseId, { lessonId: mine.lesson.id, count: 5 });
+      expect(res.status).toBe(201);
+      const job = (await res.json()) as JobSummary;
+      expect(job).toMatchObject({
+        type: 'GENERATE_FLASHCARDS',
+        status: 'QUEUED',
+        courseId: mine.courseId,
+      });
+      expect(await jobCount(mine.courseId)).toBe(1);
+    });
+
+    it('gọi lại khi job còn chạy: trả job cũ, không tạo thêm', async () => {
+      const first = (await (
+        await generate(owner, mine.courseId, { lessonId: mine.lesson.id, count: 5 })
+      ).json()) as JobSummary;
+      expect(await jobCount(mine.courseId)).toBe(1);
+      const again = (await (
+        await generate(owner, mine.courseId, { lessonId: mine.lesson.id, count: 5 })
+      ).json()) as JobSummary;
+      expect(again.id).toBe(first.id);
+    });
+
+    it('từ một tài liệu đã trích xuất: 201', async () => {
+      const res = await generate(owner, mine.courseId, { documentId: mine.extracted.id });
+      expect(res.status).toBe(201);
+    });
+
+    it('tài liệu chưa trích xuất xong: 409 và không tạo job', async () => {
+      const before = await jobCount(mine.courseId);
+      const res = await generate(owner, mine.courseId, { documentId: mine.pending.id });
+      expect(res.status).toBe(409);
+      expect(await jobCount(mine.courseId)).toBe(before);
+    });
+
+    it('nguồn của người khác hoặc khóa học khác: 404', async () => {
+      const own = { lessonId: theirs.lesson.id };
+      expect((await generate(owner, theirs.courseId, own)).status).toBe(404);
+      expect((await generate(owner, mine.courseId, own)).status).toBe(404);
+      const doc = { documentId: theirs.extracted.id };
+      expect((await generate(owner, mine.courseId, doc)).status).toBe(404);
+    });
+
+    it('đầu vào sai: 400 (thiếu nguồn, hai nguồn, count ngoài khoảng)', async () => {
+      const lessonId = mine.lesson.id;
+      expect((await generate(owner, mine.courseId, {})).status).toBe(400);
+      const both = { lessonId, documentId: mine.extracted.id };
+      expect((await generate(owner, mine.courseId, both)).status).toBe(400);
+      expect((await generate(owner, mine.courseId, { lessonId, count: 31 })).status).toBe(400);
+      expect((await generate(owner, mine.courseId, { lessonId, count: 0 })).status).toBe(400);
+    });
+
+    it('cần đăng nhập', async () => {
+      const res = await fetch(`${API_URL}/api/v1/ai/courses/${mine.courseId}/generate-flashcards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId: mine.lesson.id }),
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it('hết hạn mức AI của gói: 402 QUOTA_EXCEEDED và không tạo thêm job', async () => {
+      // Gói FREE cho 10 lượt AI mỗi tháng; đổi `count` để mỗi lượt là một job khác nhau.
+      let rejected: Response | null = null;
+      for (let n = 1; n <= 12 && !rejected; n++) {
+        const body = { lessonId: theirs.lesson.id, count: n };
+        const res = await generate(other, theirs.courseId, body);
+        if (res.status !== 201) rejected = res;
+      }
+      expect(rejected?.status).toBe(402);
+      expect(JSON.stringify(await rejected!.json())).toContain('QUOTA_EXCEEDED');
+      expect(await jobCount(theirs.courseId)).toBe(10);
+    });
+  });
+}
+
+// ── Duyệt Thẻ nháp (ticket 07) ────────────────────────────────────────────────────────────────
+{
+  async function seedDrafts(s: Session, count: number) {
+    const course = await prisma.course.create({ data: { ownerId: s.userId, title: 'Khóa nháp' } });
+    const job = await prisma.aIJob.create({
+      data: {
+        courseId: course.id,
+        requestedById: s.userId,
+        type: 'GENERATE_FLASHCARDS',
+        status: 'SUCCEEDED',
+        idempotencyKey: `draft-seed-${Date.now()}-${Math.random()}`,
+        inputParams: {},
+      },
+    });
+    const drafts = [];
+    for (let n = 1; n <= count; n++) {
+      drafts.push(
+        await prisma.flashcardDraft.create({
+          data: {
+            userId: s.userId,
+            courseId: course.id,
+            aiJobId: job.id,
+            front: `Nháp ${n}`,
+            back: `Đáp ${n}`,
+          },
+        }),
+      );
+    }
+    return { job, drafts };
+  }
+  type DraftList = { drafts: Array<{ id: string; front: string; back: string; aiJobId: string }> };
+  const listDrafts = async (s: Session, query = '') =>
+    (await (await call(s, 'GET', `/flashcards/drafts${query}`)).json()) as DraftList;
+  const accept = (s: Session, body: unknown) => call(s, 'POST', '/flashcards/drafts/accept', body);
+  const makeDeck = async (s: Session, title: string) =>
+    (await (await call(s, 'POST', '/decks', { title })).json()) as DeckSummary;
+
+  describe('Duyệt thẻ nháp', () => {
+    it('liệt kê nháp của mình, lọc theo job, không thấy nháp của người khác', async () => {
+      const a = await seedDrafts(owner, 2);
+      const b = await seedDrafts(owner, 1);
+      const theirs = await seedDrafts(other, 1);
+
+      const all = await listDrafts(owner);
+      const ids = all.drafts.map((d) => d.id);
+      expect(ids).toEqual(expect.arrayContaining([...a.drafts, ...b.drafts].map((d) => d.id)));
+      expect(ids).not.toContain(theirs.drafts[0]!.id);
+
+      const onlyA = await listDrafts(owner, `?aiJobId=${a.job.id}`);
+      expect(onlyA.drafts.map((d) => d.id).sort()).toEqual(a.drafts.map((d) => d.id).sort());
+    });
+
+    it('sửa nháp: lưu nội dung mới, báo lỗi tiếng Việt khi sai, 404 với nháp của người khác', async () => {
+      const draft = (await seedDrafts(owner, 1)).drafts[0]!;
+      const edited = await call(owner, 'PATCH', `/flashcards/drafts/${draft.id}`, {
+        front: '  Mặt trước mới ',
+        back: 'Mặt sau mới',
+      });
+      expect(edited.status).toBe(200);
+      expect(await edited.json()).toMatchObject({ front: 'Mặt trước mới', back: 'Mặt sau mới' });
+
+      const bad = await call(owner, 'PATCH', `/flashcards/drafts/${draft.id}`, { front: '' });
+      expect(bad.status).toBe(400);
+      expect(JSON.stringify(await bad.json())).toContain('Vui lòng nhập mặt trước của thẻ.');
+
+      const foreign = await call(other, 'PATCH', `/flashcards/drafts/${draft.id}`, { front: 'x' });
+      expect(foreign.status).toBe(404);
+    });
+
+    it('bỏ nháp: biến mất; nháp của người khác trả 404 và còn nguyên', async () => {
+      const draft = (await seedDrafts(owner, 1)).drafts[0]!;
+      expect((await call(other, 'DELETE', `/flashcards/drafts/${draft.id}`)).status).toBe(404);
+      expect(await prisma.flashcardDraft.count({ where: { id: draft.id } })).toBe(1);
+      expect((await call(owner, 'DELETE', `/flashcards/drafts/${draft.id}`)).status).toBe(200);
+      expect(await prisma.flashcardDraft.count({ where: { id: draft.id } })).toBe(0);
+    });
+
+    it('chấp nhận vào bộ có sẵn: thành Thẻ đến hạn ngay, nháp biến mất', async () => {
+      const deck = await makeDeck(owner, 'Bộ nhận nháp');
+      const { drafts } = await seedDrafts(owner, 3);
+      const ids = drafts.map((d) => d.id);
+      const res = await accept(owner, { draftIds: ids, deckId: deck.id });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toEqual({ deckId: deck.id, accepted: 3 });
+
+      const detail = (await (
+        await call(owner, 'GET', `/decks/${deck.id}/cards`)
+      ).json()) as DeckDetailResponse;
+      expect(detail.cards.map((c) => c.front).sort()).toEqual(['Nháp 1', 'Nháp 2', 'Nháp 3']);
+      expect(detail.deck).toMatchObject({ cardCount: 3, newCount: 3, dueCount: 3 });
+      expect(await prisma.flashcardDraft.count({ where: { id: { in: ids } } })).toBe(0);
+    });
+
+    it('chấp nhận vào bộ mới đặt tên', async () => {
+      const { drafts } = await seedDrafts(owner, 2);
+      const res = await accept(owner, {
+        draftIds: drafts.map((d) => d.id),
+        newDeckTitle: 'Bộ từ AI',
+      });
+      expect(res.status).toBe(201);
+      const out = (await res.json()) as { deckId: string; accepted: number };
+      expect(out.accepted).toBe(2);
+      const list = (await (await call(owner, 'GET', '/decks')).json()) as DeckListResponse;
+      expect(list.decks.find((d) => d.id === out.deckId)).toMatchObject({
+        title: 'Bộ từ AI',
+        cardCount: 2,
+      });
+    });
+
+    it('nháp chưa chấp nhận không có lịch ôn: không vào danh sách đến hạn', async () => {
+      await prisma.flashcard.deleteMany({ where: { userId: owner.userId } });
+      await prisma.deck.deleteMany({ where: { userId: owner.userId } });
+      await seedDrafts(owner, 2);
+      const due = (await (
+        await call(owner, 'GET', '/flashcards/due')
+      ).json()) as DueFlashcardsResponse;
+      expect(due).toEqual({ cards: [], dueCount: 0, nextDueAt: null });
+    });
+
+    it('id không thuộc về mình hoặc bộ đích của người khác: 404 và không đổi gì', async () => {
+      const mine = await seedDrafts(owner, 2);
+      const theirs = await seedDrafts(other, 1);
+      const myDeck = await makeDeck(owner, 'Bộ đích');
+      const theirDeck = await makeDeck(other, 'Bộ họ');
+
+      const mixed = await accept(owner, {
+        draftIds: [mine.drafts[0]!.id, theirs.drafts[0]!.id],
+        deckId: myDeck.id,
+      });
+      expect(mixed.status).toBe(404);
+      const toTheirs = await accept(owner, {
+        draftIds: [mine.drafts[0]!.id],
+        deckId: theirDeck.id,
+      });
+      expect(toTheirs.status).toBe(404);
+
+      expect(await prisma.flashcardDraft.count({ where: { id: mine.drafts[0]!.id } })).toBe(1);
+      expect(await prisma.flashcardDraft.count({ where: { id: theirs.drafts[0]!.id } })).toBe(1);
+      const decks = [myDeck.id, theirDeck.id];
+      expect(await prisma.flashcard.count({ where: { deckId: { in: decks } } })).toBe(0);
+    });
+
+    it('chấp nhận hai lần cùng lúc: chỉ một lần thành công, không tạo thẻ trùng', async () => {
+      const deck = await makeDeck(owner, 'Bộ song song');
+      const { drafts } = await seedDrafts(owner, 4);
+      const body = { draftIds: drafts.map((d) => d.id), deckId: deck.id };
+      const results = await Promise.all([accept(owner, body), accept(owner, body)]);
+      expect(results.map((r) => r.status).sort()).toEqual([201, 404]);
+      expect(await prisma.flashcard.count({ where: { deckId: deck.id } })).toBe(4);
+    });
+
+    it('đầu vào sai: thiếu đích, đủ hai đích, danh sách rỗng đều trả 400', async () => {
+      const { drafts } = await seedDrafts(owner, 1);
+      const deck = await makeDeck(owner, 'Bộ kiểm');
+      const ids = [drafts[0]!.id];
+      expect((await accept(owner, { draftIds: ids })).status).toBe(400);
+      const both = { draftIds: ids, deckId: deck.id, newDeckTitle: 'Cả hai' };
+      expect((await accept(owner, both)).status).toBe(400);
+      expect((await accept(owner, { draftIds: [], deckId: deck.id })).status).toBe(400);
     });
   });
 }

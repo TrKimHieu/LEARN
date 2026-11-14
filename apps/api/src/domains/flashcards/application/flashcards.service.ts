@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { Deck, Flashcard, Prisma } from '@learn/db';
+import { newId } from '@learn/db';
+import type { Deck, Flashcard, FlashcardDraft, Prisma } from '@learn/db';
 import type {
+  AcceptFlashcardDraftsInput,
+  AcceptFlashcardDraftsResult,
   CreateDeckInput,
   CreateFlashcardInput,
   DeckDetailResponse,
@@ -9,8 +12,11 @@ import type {
   DeckSummary,
   DueFlashcardsResponse,
   Flashcard as FlashcardDto,
+  FlashcardDraft as FlashcardDraftDto,
+  FlashcardDraftList,
   FlashcardReviewResult,
   PatchDeckInput,
+  PatchFlashcardDraftInput,
   PatchFlashcardInput,
   SubmitFlashcardReviewInput,
 } from '@learn/contracts';
@@ -23,6 +29,7 @@ import { FlashcardRepository, type DeckCounts } from '../infrastructure/flashcar
 const NO_DECK = 'Không tìm thấy bộ thẻ.';
 const NO_CARD = 'Không tìm thấy thẻ.';
 const NO_COURSE = 'Không tìm thấy khóa học.';
+const NO_DRAFT = 'Không tìm thấy thẻ nháp.';
 
 /** Dấu vân tay body, để cùng key nhưng khác thẻ/mức nhớ/giờ chấm thì trả 409. */
 const reviewFingerprint = (cardId: string, input: SubmitFlashcardReviewInput): string =>
@@ -37,6 +44,15 @@ const toDeckSummary = (deck: Deck, counts: DeckCounts): DeckSummary => ({
   ...counts,
   createdAt: deck.createdAt.toISOString(),
   updatedAt: deck.updatedAt.toISOString(),
+});
+
+const toDraft = (d: FlashcardDraft): FlashcardDraftDto => ({
+  id: d.id,
+  courseId: d.courseId,
+  aiJobId: d.aiJobId,
+  front: d.front,
+  back: d.back,
+  createdAt: d.createdAt.toISOString(),
 });
 
 const toFlashcard = (card: Flashcard): FlashcardDto => ({
@@ -214,6 +230,65 @@ export class FlashcardsService {
     if (!prior) return null;
     if (prior.requestHash !== requestHash || !prior.response) throw idempotencyKeyReused();
     return prior.response as unknown as FlashcardReviewResult;
+  }
+
+  async listDrafts(userId: string, aiJobId?: string): Promise<FlashcardDraftList> {
+    return { drafts: (await this.repo.listDrafts(userId, aiJobId)).map(toDraft) };
+  }
+
+  async patchDraft(
+    userId: string,
+    draftId: string,
+    input: PatchFlashcardDraftInput,
+  ): Promise<FlashcardDraftDto> {
+    const draft = await this.repo.updateDraft(userId, draftId, input);
+    if (!draft) throw ApiError.notFound(NO_DRAFT);
+    return toDraft(draft);
+  }
+
+  async removeDraft(userId: string, draftId: string): Promise<{ id: string }> {
+    if (!(await this.repo.deleteDraft(userId, draftId))) throw ApiError.notFound(NO_DRAFT);
+    return { id: draftId };
+  }
+
+  /**
+   * Chấp nhận nháp thành Thẻ thật (đến hạn ngay). Tất cả hoặc không gì: mọi nháp phải của người dùng và
+   * bộ đích phải của họ, nếu không 404 và không đổi gì. Xóa nháp trong cùng transaction với tạo thẻ, và
+   * kiểm số dòng xóa được, nên hai lượt chấp nhận song song cùng nháp chỉ một lượt thành công.
+   */
+  async acceptDrafts(
+    userId: string,
+    input: AcceptFlashcardDraftsInput,
+  ): Promise<AcceptFlashcardDraftsResult> {
+    const ids = [...new Set(input.draftIds)];
+    return this.prisma.client.$transaction(async (tx) => {
+      let deckId = input.deckId ?? null;
+      if (deckId) {
+        const deck = await tx.deck.findFirst({ where: { id: deckId, userId, deletedAt: null } });
+        if (!deck) throw ApiError.notFound(NO_DECK);
+      }
+      const drafts = await tx.flashcardDraft.findMany({ where: { id: { in: ids }, userId } });
+      if (drafts.length !== ids.length) throw ApiError.notFound(NO_DRAFT);
+      const removed = await tx.flashcardDraft.deleteMany({ where: { id: { in: ids }, userId } });
+      if (removed.count !== ids.length) throw ApiError.notFound(NO_DRAFT);
+
+      if (!deckId) {
+        deckId = newId();
+        await tx.deck.create({ data: { id: deckId, userId, title: input.newDeckTitle! } });
+      }
+      const now = new Date();
+      await tx.flashcard.createMany({
+        data: drafts.map((d) => ({
+          id: newId(),
+          deckId: deckId!,
+          userId,
+          front: d.front,
+          back: d.back,
+          dueAt: now,
+        })),
+      });
+      return { deckId, accepted: drafts.length };
+    });
   }
 
   private async summary(userId: string, deck: Deck): Promise<DeckSummary> {
