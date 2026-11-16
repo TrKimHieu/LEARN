@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { GenerateLessonsInput } from '@learn/contracts';
+import type { GenerateFlashcardsInput, GenerateLessonsInput } from '@learn/contracts';
 import { ApiError } from '../../../core/exceptions/errors';
 import { QueueService } from '../../../infra/services';
 import { UsageService } from '../../subscriptions/application/usage.service';
@@ -98,6 +98,64 @@ export class AiService {
       { jobId: `gen-${job.id}`, attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
     );
 
+    return this.summary(job);
+  }
+
+  /**
+   * Tạo job sinh Thẻ nháp từ một bài học hoặc một tài liệu đã trích xuất của khóa học. Cùng khuôn với
+   * `generateLessons`: kiểm chủ sở hữu, từ chối ngay khi nguồn không dùng được (không trừ hạn mức cho
+   * job chắc chắn hỏng), chống nộp trùng, trừ hạn mức cùng transaction rồi mới đẩy vào hàng đợi.
+   */
+  async generateFlashcards(userId: string, courseId: string, input: GenerateFlashcardsInput) {
+    const course = await this.courses.findOwned(courseId, userId);
+    if (!course) throw ApiError.notFound('Không tìm thấy khóa học.');
+
+    if (input.lessonId) {
+      if (!(await this.jobs.lessonInCourse(input.lessonId, courseId)))
+        throw ApiError.notFound('Không tìm thấy bài học trong khóa học này.');
+    } else {
+      const ids = [input.documentId!];
+      if ((await this.documents.countOwnedInCourse(userId, courseId, ids)) !== 1)
+        throw ApiError.notFound('Không tìm thấy tài liệu trong khóa học này.');
+      if (!(await this.documents.countExtractedInCourse(userId, courseId, ids)))
+        throw ApiError.conflict('Tài liệu này chưa sẵn sàng để sinh thẻ.');
+    }
+
+    const params = {
+      lessonId: input.lessonId ?? null,
+      documentId: input.documentId ?? null,
+      count: input.count,
+      language: course.language,
+    };
+    const existing = await this.jobs.findPendingGenerate(
+      courseId,
+      userId,
+      params,
+      undefined,
+      'GENERATE_FLASHCARDS',
+    );
+    if (existing) return this.summary(existing);
+
+    const job = await this.usage.consume(userId, 'AI_JOBS_RUN', (tx) =>
+      this.jobs.create(
+        {
+          courseId,
+          requestedById: userId,
+          type: 'GENERATE_FLASHCARDS',
+          documentId: input.documentId ?? null,
+          idempotencyKey: `flash:${courseId}:${JSON.stringify(params)}:${Date.now()}`,
+          params,
+          queuedAt: new Date(),
+        },
+        tx,
+      ),
+    );
+
+    await this.queue.flashcardGenerate.add(
+      'GENERATE_FLASHCARDS',
+      { aiJobId: job.id, courseId, userId, params },
+      { jobId: `flash-${job.id}`, attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+    );
     return this.summary(job);
   }
 

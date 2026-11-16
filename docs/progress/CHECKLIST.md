@@ -24,3 +24,6 @@
 - [x] Text import endpoint + contracts 1.1.0 (unit tests on fakes, consumer smoke).
 - [ ] Text import against real PostgreSQL/staging from a development build.
 - [ ] SRS reviews against real PostgreSQL (backfill query, access filter, FOR UPDATE) and on device offline.
+- [x] Decks and flashcards CRUD (contracts 1.3.0, integration tests on real PostgreSQL sandbox).
+- [x] Flashcard review API (due list, grade, idempotency, clamping) with integration tests.
+- [x] AI flashcard draft generation (job, quota, worker) and draft review API with integration tests.

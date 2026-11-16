@@ -34,3 +34,13 @@ Review correction: API readiness returns HTTP200 even for degraded dependencies.
 Submit idempotency: requested so the mobile offline outbox can resend exercise submissions. Branch feat/submit-idempotency from origin/main 1138b13 in a separate worktree (local checkout has unrelated uncommitted infra edits). Error code kept as existing CONFLICT plus meta.reason to avoid a contracts hash change. User asked to stop at PR; no deploy.
 
 Text import (R3): user chose full on-device extraction for mobile; original-file upload stays disabled on mobile and unchanged for web. Branch feat/text-import from origin/main 83b22ab. Contracts bumped to 1.1.0 within major 1. No deploy.
+
+SM-2 shared (2026-11-13): refactor only. Moved `sm2.ts` + `sm2.test.ts` into `apps/api/src/core/srs`, updated the single import in reviews.service. Baseline reviews tests (25) green before and after; full unit run 315 green; typecheck, eslint and prettier clean on touched paths. No contracts or schema change.
+
+Flashcards ticket 02: contracts first (flashcard.ts + 4 unit tests), then integration test written red (404 on missing routes) before the module. Dev API must run from this worktree for the integration suite (the main-tree backend lacks the migrations and routes). Verified: tsc, 315+ unit tests, integration 9/9, contracts:consumer passed.
+
+Flashcard review ticket 03: wrote core/srs/review.test.ts first (red), then reviewCard; integration test red on 404 before routes. Refactored reviews.service onto reviewCard guarded by existing 25 tests. Dev API must be stopped before `prisma generate` (query engine DLL lock on Windows).
+
+On today ticket 04: integration test red on 404, then dueCards scoped by deckId|null. Merged flashcard integration tests into one file after the combined run exhausted the register rate limit; tsx watch restarts the dev API when test files are saved, so rerun the suite after saving.
+
+Tickets 06+07: tests red first (flashcards.test.ts in packages/ai, worker flashcard-generate.integration.test.ts, API blocks in flashcards.integration.test.ts), then prompt/validator/mock, processor, API. Worker must run for the browser flow: `npm run dev:worker` with the sandbox env. `JobError`/`JobCancelledError` moved to processors/job-errors.ts and shared by both processors.

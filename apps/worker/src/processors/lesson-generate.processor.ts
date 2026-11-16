@@ -20,6 +20,7 @@ import { RedisPublisher } from '../common/redis';
 import { createLlmProvider, estimateCostUsd } from '../common/llm';
 import { env } from '../environment';
 import { commitGeneration } from './commit-generation';
+import { JobCancelledError, JobError } from './job-errors';
 
 export interface LessonGenerateJobData {
   aiJobId: string;
@@ -499,24 +500,6 @@ export class LessonGenerateProcessor {
       message: jobErr.message,
     });
     this.logger.error(`AIJob ${aiJobId} FAILED [${jobErr.code}]: ${jobErr.message}`);
-  }
-}
-
-class JobError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-    public readonly detail?: unknown,
-  ) {
-    super(message);
-    this.name = 'JobError';
-  }
-}
-
-class JobCancelledError extends JobError {
-  constructor() {
-    super('CANCELLED_BY_USER', 'Job đã được huỷ theo yêu cầu người dùng.');
-    this.name = 'JobCancelledError';
   }
 }
 

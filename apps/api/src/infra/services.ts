@@ -154,6 +154,7 @@ export class S3Service {
 export const QUEUE_NAMES = {
   documentExtract: 'document-extract',
   lessonGenerate: 'lesson-generate',
+  flashcardGenerate: 'flashcard-generate',
   billingSync: 'billing-sync',
   maintenance: 'maintenance',
 } as const;
@@ -164,6 +165,7 @@ const connection = { url: env.REDIS_URL };
 export class QueueService {
   readonly documentExtract = new Queue(QUEUE_NAMES.documentExtract, { connection });
   readonly lessonGenerate = new Queue(QUEUE_NAMES.lessonGenerate, { connection });
+  readonly flashcardGenerate = new Queue(QUEUE_NAMES.flashcardGenerate, { connection });
   readonly billingSync = new Queue(QUEUE_NAMES.billingSync, { connection });
   readonly maintenance = new Queue(QUEUE_NAMES.maintenance, { connection });
 
@@ -172,6 +174,7 @@ export class QueueService {
     for (const q of [
       this.documentExtract,
       this.lessonGenerate,
+      this.flashcardGenerate,
       this.billingSync,
       this.maintenance,
     ]) {

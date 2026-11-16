@@ -1,7 +1,12 @@
 import { Controller, Post, Get, Body, Param, Query, Res, Req, Header } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { generateLessonsSchema, type GenerateLessonsInput } from '@learn/contracts';
+import {
+  generateFlashcardsSchema,
+  generateLessonsSchema,
+  type GenerateFlashcardsInput,
+  type GenerateLessonsInput,
+} from '@learn/contracts';
 import { zodBody, zodParam, ApiError } from '../../../core/exceptions/errors';
 import { Auth, CurrentUser, type UserContext } from '../../../core/security';
 import { AiService } from '../application/ai.service';
@@ -27,6 +32,16 @@ export class AiController {
     @Body(zodBody(generateLessonsSchema)) body: GenerateLessonsInput,
   ) {
     return this.ai.generateLessons(user.userId, courseId, body);
+  }
+
+  @Post('courses/:courseId/generate-flashcards')
+  @Auth()
+  async generateFlashcards(
+    @CurrentUser() user: UserContext,
+    @Param('courseId', zodParam(idSchema)) courseId: string,
+    @Body(zodBody(generateFlashcardsSchema)) body: GenerateFlashcardsInput,
+  ) {
+    return this.ai.generateFlashcards(user.userId, courseId, body);
   }
 
   @Get('jobs')

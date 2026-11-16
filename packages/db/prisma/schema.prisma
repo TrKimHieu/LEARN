@@ -34,6 +34,10 @@ model User {
   submissions         Submission[]
   cardSchedules       CardSchedule[]
   cardReviews         CardReview[]
+  decks               Deck[]
+  flashcards          Flashcard[]
+  flashcardReviews    FlashcardReview[]
+  flashcardDrafts     FlashcardDraft[]
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   usage               UsageCounter[]
@@ -93,6 +97,7 @@ model Course {
   lessons   Lesson[]
   aiJobs    AIJob[]
   progress  LearningProgress[]
+  decks     Deck[]
 
   @@index([ownerId, deletedAt, updatedAt])
 }
@@ -172,16 +177,18 @@ model AIJob {
   startedAt      DateTime?
   finishedAt     DateTime?
 
-  course    Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  document  Document?       @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  requester User            @relation(fields: [requestedById], references: [id])
+  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  document  Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  requester User             @relation(fields: [requestedById], references: [id])
   runs      GenerationRun[]
+  drafts    FlashcardDraft[]
 
   @@index([courseId, status])
   @@index([status, queuedAt])
 }
 
 enum AIJobType {
+  GENERATE_FLASHCARDS
   EXTRACT_DOCUMENT
   GENERATE_LESSONS
   REGENERATE_LESSON
@@ -559,4 +566,82 @@ enum CourseMemberRole {
   OWNER
   EDITOR
   VIEWER
+}
+
+/// Bộ thẻ do người học tự quản lý; gắn tùy chọn với một khóa học. Xóa mềm.
+model Deck {
+  id        String    @id @default(uuid())
+  userId    String
+  courseId  String?
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course     Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  flashcards Flashcard[]
+
+  @@index([userId, deletedAt, updatedAt])
+}
+
+/// Thẻ (mặt trước/mặt sau) kèm lịch SM-2 của chính nó, tách khỏi CardSchedule của câu hỏi bài tập.
+/// Thẻ tạo xong đến hạn ngay (`dueAt` = lúc tạo).
+model Flashcard {
+  id             String    @id @default(uuid())
+  deckId         String
+  userId         String
+  front          String
+  back           String
+  easeFactor     Float     @default(2.5)
+  intervalDays   Int       @default(0)
+  repetitions    Int       @default(0)
+  lapses         Int       @default(0)
+  dueAt          DateTime
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  deck    Deck              @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews FlashcardReview[]
+
+  @@index([deckId])
+  @@index([userId, dueAt])
+}
+
+/// Lịch sử chấm Thẻ; `idempotencyKey` cho phép gửi lại lượt chấm khi mạng chập chờn.
+model FlashcardReview {
+  id             String   @id @default(uuid())
+  userId         String
+  flashcardId    String
+  grade          String
+  reviewedAt     DateTime
+  createdAt      DateTime @default(now())
+  idempotencyKey String?
+  requestHash    String?
+  response       Json?
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcard Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, idempotencyKey])
+  @@index([flashcardId, reviewedAt])
+}
+
+/// Thẻ nháp do AI sinh: chưa thuộc bộ thẻ nào và chưa có lịch ôn. Chấp nhận thì thành `Flashcard` rồi xóa nháp.
+model FlashcardDraft {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  aiJobId   String
+  front     String
+  back      String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiJob AIJob @relation(fields: [aiJobId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([aiJobId])
 }

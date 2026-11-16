@@ -85,12 +85,22 @@ describe('Sinh bài học: R1–R3', () => {
   });
 
   it('TC02 → R2: gọi lại khi job còn chạy thì trả job cũ, không tạo AIJob thứ hai', async () => {
-    // Ép job của TC01 về RUNNING để ca không phụ thuộc việc worker có chạy hay đã xong.
+    // Job của TC01 nằm trong hàng đợi: worker thật (CI) có thể đánh FAILED nó bất cứ lúc nào, kể cả
+    // ngay sau khi test ép RUNNING. Đóng nó lại, rồi tạo một job RUNNING không vào hàng đợi, worker không chạm tới.
     await prisma.aIJob.updateMany({
       where: { courseId: readyCourseId },
-      data: { status: 'RUNNING' },
+      data: { status: 'FAILED' },
     });
-    const first = await prisma.aIJob.findFirstOrThrow({ where: { courseId: readyCourseId } });
+    const first = await prisma.aIJob.create({
+      data: {
+        courseId: readyCourseId,
+        requestedById: userId,
+        type: 'GENERATE_LESSONS',
+        status: 'RUNNING',
+        idempotencyKey: `tc02-${Date.now()}`,
+        inputParams: { documentIds: [], language: 'vi', difficulty: 'MEDIUM' },
+      },
+    });
     const before = await jobCount(readyCourseId);
     const res = await generate(readyCourseId);
     expect(((await res.json()) as { id: string }).id).toBe(first.id);
