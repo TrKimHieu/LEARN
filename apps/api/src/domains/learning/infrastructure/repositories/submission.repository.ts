@@ -154,9 +154,9 @@ export class SubmissionRepository {
   }
 
   /**
-   * Các ngày (theo giờ địa phương) người dùng có lượt nộp — đầu vào tính chuỗi ngày liên tiếp.
+   * Các ngày (theo giờ địa phương) người dùng có lượt nộp bài hoặc ôn thẻ/câu hỏi — đầu vào tính chuỗi ngày liên tiếp.
    * `date_trunc` chạy trong Postgres; cửa sổ nhìn lại chặn cứng để không tải toàn bộ lịch sử.
-   * Logic múi giờ được giải thích trong ProgressService.activeStreak.
+   * Logic múi giờ được giải thích trong ProgressService.studyDays.
    */
   distinctStudyDays(
     userId: string,
@@ -166,9 +166,14 @@ export class SubmissionRepository {
     db: Db = this.prisma.client,
   ) {
     return db.$queryRaw<Array<{ day: Date }>>`
-      SELECT DISTINCT date_trunc('day', ("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone}) AS day
-      FROM "Submission"
-      WHERE "userId" = ${userId} AND "createdAt" >= ${since}
+      SELECT DISTINCT date_trunc('day', (t AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone}) AS day
+      FROM (
+        SELECT "createdAt" AS t FROM "Submission" WHERE "userId" = ${userId} AND "createdAt" >= ${since}
+        UNION ALL
+        SELECT "reviewedAt" FROM "FlashcardReview" WHERE "userId" = ${userId} AND "reviewedAt" >= ${since}
+        UNION ALL
+        SELECT "reviewedAt" FROM "CardReview" WHERE "userId" = ${userId} AND "reviewedAt" >= ${since}
+      ) s
       ORDER BY day DESC
       LIMIT ${limit}
     `;

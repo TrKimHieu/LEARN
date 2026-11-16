@@ -44,7 +44,7 @@ const envSchema = z.object({
     .default('1.0.0'),
   /**
    * Múi giờ dùng để cắt "ngày" trong các chỉ số theo ngày — hiện là chuỗi ngày học liên tiếp
-   * (`ProgressService.activeStreak`). Mặc định giờ Việt Nam vì toàn bộ nội dung và người dùng
+   * (`ProgressService.studyDays`). Mặc định giờ Việt Nam vì toàn bộ nội dung và người dùng
    * của sản phẩm là tiếng Việt; cắt theo UTC nghĩa là ranh giới ngày rơi vào 07:00 sáng giờ VN,
    * nên học lúc 1 giờ đêm bị tính sang hôm trước và chuỗi đứt oan.
    * Phải là một tên IANA hợp lệ (`Asia/Ho_Chi_Minh`, `UTC`, …) — validate ngay lúc khởi động.

@@ -8,6 +8,8 @@ export const progressOverviewSchema = z.object({
   totalLessons: z.number().int(),
   averageScore: z.number().nullable(),
   activeStreak: z.number().int().default(0),
+  /** Ngày học gần nhất (YYYY-MM-DD, giờ APP_TIMEZONE): có nộp bài hoặc ôn thẻ/câu hỏi. */
+  lastStudyDay: z.string().nullable().default(null),
 });
 
 export const progressCourseSchema = z.object({
