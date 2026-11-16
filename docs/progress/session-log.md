@@ -44,3 +44,5 @@ Flashcard review ticket 03: wrote core/srs/review.test.ts first (red), then revi
 On today ticket 04: integration test red on 404, then dueCards scoped by deckId|null. Merged flashcard integration tests into one file after the combined run exhausted the register rate limit; tsx watch restarts the dev API when test files are saved, so rerun the suite after saving.
 
 Tickets 06+07: tests red first (flashcards.test.ts in packages/ai, worker flashcard-generate.integration.test.ts, API blocks in flashcards.integration.test.ts), then prompt/validator/mock, processor, API. Worker must run for the browser flow: `npm run dev:worker` with the sandbox env. `JobError`/`JobCancelledError` moved to processors/job-errors.ts and shared by both processors.
+
+Feedback: integration tests red first (404), then the domain. The feedback block creates its course through Prisma because earlier blocks exhaust the FREE course quota of the shared user.

@@ -60,6 +60,7 @@ beforeAll(async () => {
 afterAll(async () => {
   for (const s of [owner, other]) {
     if (!s) continue;
+    await prisma.feedback.deleteMany({ where: { userId: s.userId } });
     await prisma.flashcardDraft.deleteMany({ where: { userId: s.userId } });
     await prisma.aIJob.deleteMany({ where: { requestedById: s.userId } });
     await prisma.documentChunk.deleteMany({ where: { document: { uploaderId: s.userId } } });
@@ -814,6 +815,154 @@ afterAll(async () => {
       const both = { draftIds: ids, deckId: deck.id, newDeckTitle: 'Cả hai' };
       expect((await accept(owner, both)).status).toBe(400);
       expect((await accept(owner, { draftIds: [], deckId: deck.id })).status).toBe(400);
+    });
+  });
+}
+
+// ── Feedback của người học ────────────────────────────────────────────────────────────────────
+{
+  const sendFeedback = (s: Session, body: unknown) => call(s, 'POST', '/feedback', body);
+  const feedbackRows = (userId: string) =>
+    prisma.feedback.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
+
+  describe('Feedback', () => {
+    let lessonId: string;
+    let courseId: string;
+    let otherLessonId: string;
+    let otherCourseId: string;
+
+    beforeAll(async () => {
+      await prisma.feedback.deleteMany({ where: { userId: { in: [owner.userId, other.userId] } } });
+      const mk = async (s: Session, title: string) => {
+        // Tạo thẳng trong DB: các nhóm test trước đã dùng hết hạn mức khóa học của gói FREE.
+        const { id } = await prisma.course.create({ data: { ownerId: s.userId, title } });
+        const lesson = await prisma.lesson.create({
+          data: { courseId: id, orderIndex: 0, title: 'Bài', contentMd: 'Nội dung.' },
+        });
+        return { courseId: id, lessonId: lesson.id };
+      };
+      ({ courseId, lessonId } = await mk(owner, 'Khóa feedback'));
+      ({ courseId: otherCourseId, lessonId: otherLessonId } = await mk(other, 'Khóa người khác'));
+    });
+
+    it('lưu mỗi câu trả lời thành một dòng, góp ý chữ đi kèm', async () => {
+      const res = await sendFeedback(owner, {
+        topic: 'LESSON',
+        subjectId: lessonId,
+        answers: [
+          { question: 'QUALITY', score: 4 },
+          { question: 'UNDERSTANDING', score: 2 },
+        ],
+        comment: 'Ví dụ hơi ít',
+      });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toEqual({ saved: 2 });
+      const rows = await feedbackRows(owner.userId);
+      expect(rows.map((r) => [r.topic, r.question, r.score, r.subjectId])).toEqual([
+        ['LESSON', 'QUALITY', 4, lessonId],
+        ['LESSON', 'UNDERSTANDING', 2, lessonId],
+      ]);
+      expect(rows.filter((r) => r.comment === 'Ví dụ hơi ít')).toHaveLength(1);
+    });
+
+    it('vote lại sau này là dòng mới, không ghi đè', async () => {
+      const body = { topic: 'POMODORO', answers: [{ question: 'USEFULNESS', score: 5 }] };
+      expect((await sendFeedback(owner, body)).status).toBe(201);
+      expect((await sendFeedback(owner, body)).status).toBe(201);
+      const rows = await prisma.feedback.count({
+        where: { userId: owner.userId, topic: 'POMODORO' },
+      });
+      expect(rows).toBe(2);
+    });
+
+    it('bài học hoặc khóa học của người khác: 404 và không lưu gì', async () => {
+      const before = (await feedbackRows(owner.userId)).length;
+      const lesson = await sendFeedback(owner, {
+        topic: 'PRACTICE',
+        subjectId: otherLessonId,
+        answers: [{ question: 'QUALITY', score: 1 }],
+      });
+      expect(lesson.status).toBe(404);
+      const course = await sendFeedback(owner, {
+        topic: 'LESSON_GENERATION',
+        subjectId: otherCourseId,
+        answers: [{ question: 'USEFULNESS', score: 1 }],
+      });
+      expect(course.status).toBe(404);
+      expect((await feedbackRows(owner.userId)).length).toBe(before);
+    });
+
+    it('chủ đề gắn đối tượng thì bắt buộc có đối tượng, chủ đề tính năng thì không nhận', async () => {
+      const noSubject = await sendFeedback(owner, {
+        topic: 'LESSON',
+        answers: [{ question: 'QUALITY', score: 3 }],
+      });
+      expect(noSubject.status).toBe(400);
+      const extraSubject = await sendFeedback(owner, {
+        topic: 'FLASHCARD_REVIEW',
+        subjectId: lessonId,
+        answers: [{ question: 'USEFULNESS', score: 3 }],
+      });
+      expect(extraSubject.status).toBe(400);
+      const generation = await sendFeedback(owner, {
+        topic: 'LESSON_GENERATION',
+        subjectId: courseId,
+        answers: [{ question: 'USEFULNESS', score: 5 }],
+      });
+      expect(generation.status).toBe(201);
+    });
+
+    it('điểm ngoài 1–5 trả 400; cần đăng nhập', async () => {
+      const bad = await sendFeedback(owner, {
+        topic: 'POMODORO',
+        answers: [{ question: 'USEFULNESS', score: 9 }],
+      });
+      expect(bad.status).toBe(400);
+      const anon = await fetch(`${API_URL}/api/v1/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: 'POMODORO',
+          answers: [{ question: 'USEFULNESS', score: 3 }],
+        }),
+      });
+      expect(anon.status).toBe(401);
+    });
+
+    it('admin xem tổng hợp theo chủ đề và câu hỏi; người học không xem được', async () => {
+      expect((await call(owner, 'GET', '/admin/feedback')).status).toBe(403);
+
+      const login = await fetch(`${API_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'admin@learn.ai', password: 'Admin@12345' }),
+      });
+      expect(login.status).toBe(201);
+      const admin = {
+        email: 'admin@learn.ai',
+        token: ((await login.json()) as { accessToken: string }).accessToken,
+        userId: '',
+      };
+      const res = await call(admin, 'GET', '/admin/feedback');
+      expect(res.status).toBe(200);
+      const summary = (await res.json()) as {
+        stats: Array<{
+          topic: string;
+          question: string;
+          count: number;
+          average: number;
+          distribution: number[];
+        }>;
+        comments: Array<{ comment: string; topic: string; score: number }>;
+      };
+      const quality = summary.stats.find((s) => s.topic === 'LESSON' && s.question === 'QUALITY');
+      expect(quality).toBeDefined();
+      expect(quality!.count).toBeGreaterThanOrEqual(1);
+      expect(quality!.distribution).toHaveLength(5);
+      expect(quality!.distribution.reduce((a, b) => a + b, 0)).toBe(quality!.count);
+      expect(quality!.average).toBeGreaterThanOrEqual(1);
+      expect(quality!.average).toBeLessThanOrEqual(5);
+      expect(summary.comments.map((c) => c.comment)).toContain('Ví dụ hơi ít');
     });
   });
 }
