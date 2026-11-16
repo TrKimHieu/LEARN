@@ -38,6 +38,7 @@ model User {
   flashcards          Flashcard[]
   flashcardReviews    FlashcardReview[]
   flashcardDrafts     FlashcardDraft[]
+  feedback            Feedback[]
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   usage               UsageCounter[]
@@ -644,4 +645,23 @@ model FlashcardDraft {
 
   @@index([userId, createdAt])
   @@index([aiJobId])
+}
+
+/// Một câu trả lời feedback (1–5) của người học; chỉ thêm, để theo dõi chất lượng theo thời gian.
+/// `topic`/`question` kiểm bằng Zod ở contracts, lưu dạng chuỗi để thêm loại mới không cần migration enum.
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String
+  topic     String
+  question  String
+  score     Int
+  /// lessonId (LESSON, PRACTICE) hoặc courseId (LESSON_GENERATION); trống với các tính năng khác.
+  subjectId String?
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([topic, question, createdAt])
+  @@index([userId, createdAt])
 }
