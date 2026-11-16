@@ -43,8 +43,10 @@ export class FlashcardGenerateProcessor {
   constructor(private readonly redis: RedisPublisher) {}
 
   async process(data: FlashcardGenerateJobData): Promise<void> {
-    const { aiJobId, courseId, userId, params } = data;
+    const { aiJobId, courseId, params } = data;
     const job = await prisma.aIJob.findUnique({ where: { id: aiJobId } });
+    // Chủ của thẻ nháp lấy từ AIJob, không tin payload hàng đợi.
+    const userId = job?.requestedById ?? '';
     if (!job || job.status !== 'QUEUED') {
       this.logger.log(
         `AIJob ${aiJobId} ${job ? `status=${job.status}` : 'không tồn tại'}, bỏ qua.`,

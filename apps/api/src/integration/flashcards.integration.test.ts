@@ -590,6 +590,18 @@ afterAll(async () => {
       expect(again.id).toBe(first.id);
     });
 
+    it('job kẹt RUNNING quá lâu (worker chết) không chặn lượt sinh mới cùng tham số', async () => {
+      const body = { lessonId: mine.lesson.id, count: 5 };
+      const stuck = (await (await generate(owner, mine.courseId, body)).json()) as JobSummary;
+      await prisma.aIJob.update({
+        where: { id: stuck.id },
+        data: { status: 'RUNNING', queuedAt: new Date(Date.now() - 3 * 60 * 60 * 1000) },
+      });
+      const fresh = (await (await generate(owner, mine.courseId, body)).json()) as JobSummary;
+      expect(fresh.id).not.toBe(stuck.id);
+      expect(fresh.status).toBe('QUEUED');
+    });
+
     it('từ một tài liệu đã trích xuất: 201', async () => {
       const res = await generate(owner, mine.courseId, { documentId: mine.extracted.id });
       expect(res.status).toBe(201);

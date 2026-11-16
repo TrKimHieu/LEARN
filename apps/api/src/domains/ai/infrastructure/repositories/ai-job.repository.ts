@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { newId } from '@learn/db';
 import { PrismaService, type Db } from '../../../../infra/services';
+import { env } from '../../../../environment';
 
 export type AIJobTypeName =
   'EXTRACT_DOCUMENT' | 'GENERATE_LESSONS' | 'REGENERATE_LESSON' | 'GENERATE_FLASHCARDS';
@@ -37,6 +38,9 @@ export class AIJobRepository {
         type,
         status: { in: ['QUEUED', 'RUNNING'] },
         inputParams: { equals: params as never },
+        // Worker chết giữa chừng để lại job RUNNING mãi; quá hai lần hạn chót thì không coi là còn chạy,
+        // nếu không người dùng không bao giờ sinh lại được với cùng tham số.
+        queuedAt: { gte: new Date(Date.now() - 2 * env.AI_JOB_TIMEOUT_MS) },
       },
     });
   }
