@@ -1,6 +1,7 @@
 import { requireSandbox, deleteFixtureCourses } from './safety';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '@learn/db';
+import { env } from '../environment';
 import { localDayKey } from '../domains/learning/application/progress.service';
 import type {
   DeckDetailResponse,
@@ -988,7 +989,7 @@ afterAll(async () => {
       expect(res.status).toBe(201);
 
       const out = await overview(owner);
-      expect(out.lastStudyDay).toBe(localDayKey(new Date(), 'Asia/Ho_Chi_Minh'));
+      expect(out.lastStudyDay).toBe(localDayKey(new Date(), env.APP_TIMEZONE));
       expect(out.activeStreak).toBeGreaterThanOrEqual(1);
     });
 
