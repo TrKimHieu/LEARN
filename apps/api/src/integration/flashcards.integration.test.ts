@@ -1,6 +1,8 @@
 import { requireSandbox, deleteFixtureCourses } from './safety';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '@learn/db';
+import { env } from '../environment';
+import { localDayKey } from '../domains/learning/application/progress.service';
 import type {
   DeckDetailResponse,
   DeckListResponse,
@@ -963,6 +965,41 @@ afterAll(async () => {
       expect(quality!.average).toBeGreaterThanOrEqual(1);
       expect(quality!.average).toBeLessThanOrEqual(5);
       expect(summary.comments.map((c) => c.comment)).toContain('Ví dụ hơi ít');
+    });
+  });
+
+  describe('progress overview study days', () => {
+    const overview = async (s: Session) =>
+      (await (await call(s, 'GET', '/progress/overview')).json()) as {
+        lastStudyDay: string | null;
+        activeStreak: number;
+      };
+
+    it('counts a flashcard review today as a study day', async () => {
+      const deck = (await (
+        await call(owner, 'POST', '/decks', { title: 'Ngày học' })
+      ).json()) as DeckSummary;
+      const card = (await (
+        await call(owner, 'POST', `/decks/${deck.id}/cards`, { front: 'a', back: 'b' })
+      ).json()) as Flashcard;
+      const res = await call(owner, 'POST', `/cards/${card.id}/review`, {
+        grade: 'GOOD',
+        reviewedAt: new Date().toISOString(),
+      });
+      expect(res.status).toBe(201);
+
+      const out = await overview(owner);
+      expect(out.lastStudyDay).toBe(localDayKey(new Date(), env.APP_TIMEZONE));
+      expect(out.activeStreak).toBeGreaterThanOrEqual(1);
+    });
+
+    it('returns lastStudyDay null for a user who never studied', async () => {
+      const fresh = await register('flash-fresh');
+      try {
+        expect(await overview(fresh)).toMatchObject({ lastStudyDay: null, activeStreak: 0 });
+      } finally {
+        await prisma.user.deleteMany({ where: { email: fresh.email } });
+      }
     });
   });
 }

@@ -30,7 +30,7 @@ export class ProgressService {
   ) {}
 
   async overview(userId: string): Promise<ProgressOverview> {
-    const [courseCount, totalLessons, completedLessons, scores, activeStreak] = await Promise.all([
+    const [courseCount, totalLessons, completedLessons, scores, study] = await Promise.all([
       this.courses.countOwned(userId),
       this.lessons.countForOwner(userId),
       this.progress.countCompleted(userId),
@@ -38,7 +38,7 @@ export class ProgressService {
       // Trung bình tính bằng `aggregate` trong Postgres; bản trước kéo TOÀN BỘ Submission của
       // người dùng về Node chỉ để cộng lại — không giới hạn, lớn dần mãi theo thời gian dùng.
       this.submissions.averageForUser(userId),
-      this.activeStreak(userId),
+      this.studyDays(userId),
     ]);
 
     return {
@@ -46,7 +46,8 @@ export class ProgressService {
       totalLessons,
       completedLessons,
       averageScore: scores._avg.score == null ? null : Math.round(scores._avg.score * 10) / 10,
-      activeStreak,
+      activeStreak: study.streak,
+      lastStudyDay: study.lastStudyDay,
     };
   }
 
@@ -120,7 +121,7 @@ export class ProgressService {
   }
 
   /**
-   * Số ngày học liên tiếp tính tới hôm nay (hoặc hôm qua, nếu hôm nay chưa học).
+   * Ngày học = có nộp bài hoặc ôn thẻ/câu hỏi. Trả số ngày liên tiếp tính tới hôm nay (hoặc hôm qua, nếu hôm nay chưa học).
    *
    * Hai điều đáng chú ý:
    *
@@ -135,27 +136,30 @@ export class ProgressService {
    *    `AT TIME ZONE <tz>` để đổi sang giờ địa phương. Thiếu bước đầu thì kết quả phụ thuộc
    *    biến `TimeZone` của phiên Postgres — chạy máy khác ra số khác.
    */
-  private async activeStreak(userId: string): Promise<number> {
+  private async studyDays(
+    userId: string,
+  ): Promise<{ streak: number; lastStudyDay: string | null }> {
     const tz = env.APP_TIMEZONE;
     const since = new Date(Date.now() - STREAK_LOOKBACK_DAYS * DAY_MS);
     const rows = await this.submissions.distinctStudyDays(userId, since, tz, STREAK_LOOKBACK_DAYS);
-    if (rows.length === 0) return 0;
+    if (rows.length === 0) return { streak: 0, lastStudyDay: null };
 
     // `date_trunc` trả `timestamp` không múi giờ, mang đúng ngày địa phương; Prisma dựng Date
     // coi nó là UTC, nên đọc lại bằng các getter UTC là ra đúng ngày ấy.
     const days = new Set(rows.map((r) => utcDayKey(r.day)));
+    const lastStudyDay = utcDayKey(rows[0]!.day);
 
     let cursor = localDayKey(new Date(), tz);
     // Chưa học hôm nay thì chuỗi vẫn còn sống nếu hôm qua có học.
     if (!days.has(cursor)) cursor = previousDayKey(cursor);
-    if (!days.has(cursor)) return 0;
+    if (!days.has(cursor)) return { streak: 0, lastStudyDay };
 
     let streak = 0;
     while (days.has(cursor)) {
       streak += 1;
       cursor = previousDayKey(cursor);
     }
-    return streak;
+    return { streak, lastStudyDay };
   }
 }
 
