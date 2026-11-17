@@ -1003,3 +1003,100 @@ afterAll(async () => {
     });
   });
 }
+
+// ── Chấm từng câu (luyện tập, không lưu) ──────────────────────────────────────────────────────
+{
+  describe('Chấm từng câu', () => {
+    let lessonId: string;
+    let exerciseId: string;
+    let mcqId: string;
+    let tfId: string;
+    let rightOptionId: string;
+    const check = (s: Session, answer: unknown, id = lessonId) =>
+      call(s, 'POST', `/lessons/${id}/exercise/check`, { exerciseId, answer });
+
+    beforeAll(async () => {
+      const course = await prisma.course.create({
+        data: { ownerId: owner.userId, title: 'Khóa chấm từng câu' },
+      });
+      const lesson = await prisma.lesson.create({
+        data: { courseId: course.id, orderIndex: 0, title: 'Bài', contentMd: 'Nội dung.' },
+      });
+      lessonId = lesson.id;
+      const exercise = await prisma.exercise.create({
+        data: { lessonId, orderIndex: 0, title: 'Luyện' },
+      });
+      exerciseId = exercise.id;
+      const mcq = await prisma.question.create({
+        data: {
+          exerciseId,
+          orderIndex: 0,
+          type: 'MULTIPLE_CHOICE',
+          prompt: 'Chọn đúng',
+          explanation: 'Vì A đúng.',
+          correctAnswer: {},
+          options: {
+            create: [
+              { orderIndex: 0, label: 'A', content: 'Đúng', isCorrect: true },
+              { orderIndex: 1, label: 'B', content: 'Sai', isCorrect: false },
+            ],
+          },
+        },
+        include: { options: true },
+      });
+      mcqId = mcq.id;
+      rightOptionId = mcq.options.find((o) => o.isCorrect)!.id;
+      const tf = await prisma.question.create({
+        data: {
+          exerciseId,
+          orderIndex: 1,
+          type: 'TRUE_FALSE',
+          prompt: 'Đúng hay sai',
+          correctAnswer: { value: true },
+        },
+      });
+      tfId = tf.id;
+    });
+
+    it('grades one correct multiple-choice answer and writes nothing', async () => {
+      const before = await prisma.submission.count({ where: { userId: owner.userId } });
+      const res = await check(owner, {
+        type: 'MULTIPLE_CHOICE',
+        questionId: mcqId,
+        optionId: rightOptionId,
+      });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toMatchObject({
+        questionId: mcqId,
+        isCorrect: true,
+        correctAnswer: { optionId: rightOptionId },
+        explanation: 'Vì A đúng.',
+      });
+      expect(await prisma.submission.count({ where: { userId: owner.userId } })).toBe(before);
+    });
+
+    it('returns isCorrect false with the right answer for a wrong true/false', async () => {
+      const res = await check(owner, { type: 'TRUE_FALSE', questionId: tfId, value: false });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toMatchObject({
+        questionId: tfId,
+        isCorrect: false,
+        correctAnswer: { value: true },
+      });
+    });
+
+    it('rejects a question from another exercise with 400', async () => {
+      const res = await check(owner, {
+        type: 'TRUE_FALSE',
+        questionId: crypto.randomUUID(),
+        value: true,
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 404 for another learner's lesson", async () => {
+      const res = await check(other, { type: 'TRUE_FALSE', questionId: tfId, value: true });
+      expect(res.status).toBe(404);
+    });
+  });
+}

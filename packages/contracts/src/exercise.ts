@@ -58,7 +58,7 @@ export const exerciseReadSchema = z.object({
   exercises: z.array(exerciseNavItemSchema),
 });
 
-const questionAnswerSchema = z.discriminatedUnion('type', [
+export const questionAnswerSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('MULTIPLE_CHOICE'),
     questionId: z.string().uuid(),
@@ -89,6 +89,18 @@ export const submitExerciseSchema = z
     message: 'Không được trả lời trùng câu hỏi',
   });
 
+/** Chấm một câu khi luyện tập: không lưu gì, trả đáp án đúng ngay. */
+export const checkAnswerSchema = z
+  .object({ exerciseId: z.string().uuid(), answer: questionAnswerSchema })
+  .strict();
+
+export const checkResultSchema = z.object({
+  questionId: z.string(),
+  isCorrect: z.boolean(),
+  correctAnswer: z.unknown().nullable(),
+  explanation: z.string().nullable(),
+});
+
 export const submissionSchema = z.object({
   id: z.string(),
   exerciseId: z.string(),
@@ -114,3 +126,5 @@ export type ExerciseNavItem = z.infer<typeof exerciseNavItemSchema>;
 export type ExerciseRead = z.infer<typeof exerciseReadSchema>;
 export type SubmitExerciseInput = z.infer<typeof submitExerciseSchema>;
 export type SubmissionResult = z.infer<typeof submissionSchema>;
+export type CheckAnswerInput = z.infer<typeof checkAnswerSchema>;
+export type CheckResult = z.infer<typeof checkResultSchema>;
