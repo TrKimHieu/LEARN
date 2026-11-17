@@ -1,4 +1,15 @@
-import { Controller, Get, Patch, Post, Delete, Body, Headers, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Delete,
+  Body,
+  Headers,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { z } from 'zod';
 import {
   patchLessonSchema,
@@ -11,7 +22,13 @@ import {
   type SubmitExerciseInput,
 } from '@learn/contracts';
 import { zodBody, zodParam } from '../../../core/exceptions/errors';
-import { Auth, CurrentUser, Throttle, type UserContext } from '../../../core/security';
+import {
+  Auth,
+  CurrentUser,
+  RateLimitGuard,
+  Throttle,
+  type UserContext,
+} from '../../../core/security';
 import { LessonsService } from '../application/lessons.service';
 import { ExercisesService } from '../application/exercises.service';
 import { parseIdempotencyKey } from '../application/submit-idempotency';
@@ -111,6 +128,9 @@ export class LearningController {
   }
 
   @Post('lessons/:lessonId/exercise/check')
+  // Above @Auth(): decorators apply bottom-up and UseGuards appends, so this runs after AuthGuard
+  // and the limit is keyed by userId.
+  @UseGuards(RateLimitGuard)
   @Auth()
   @Throttle(120, 60)
   async check(

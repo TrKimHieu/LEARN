@@ -184,6 +184,8 @@ for (const operation of operations) {
     responseSchema = ref('exerciseReadSchema');
   if (path === '/api/v1/lessons/{lessonId}/exercise/submit')
     responseSchema = ref('submissionSchema');
+  if (path === '/api/v1/lessons/{lessonId}/exercise/check')
+    responseSchema = ref('checkResultSchema');
   if (responseSchema) response.content = { 'application/json': { schema: responseSchema } };
   else entry['x-response-schema-status'] = 'not-yet-typed';
   if (path.endsWith('/stream')) {

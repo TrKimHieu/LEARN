@@ -130,13 +130,6 @@ export class ExercisesService {
     });
   }
 
-  /**
-   * Chấm điểm ngay tại server, lưu 1 bản ghi, trả kết quả kèm đáp án — HANDBOOK §7.4.
-   *
-   * `idempotencyKey` (header `Idempotency-Key`): cùng người dùng + cùng key trả lại đúng kết quả
-   * lần đầu; cùng key nhưng nội dung khác → 409. Kết quả được lưu cùng transaction với Submission,
-   * nên ai thấy bản ghi cũng thấy kết quả của nó.
-   */
   /** Luyện tập: chấm đúng một câu, không ghi gì vào DB. */
   async check(userId: string, lessonId: string, input: CheckAnswerInput): Promise<CheckResult> {
     await this.assertLessonAccess(userId, lessonId);
@@ -152,6 +145,13 @@ export class ExercisesService {
     };
   }
 
+  /**
+   * Chấm điểm ngay tại server, lưu 1 bản ghi, trả kết quả kèm đáp án — HANDBOOK §7.4.
+   *
+   * `idempotencyKey` (header `Idempotency-Key`): cùng người dùng + cùng key trả lại đúng kết quả
+   * lần đầu; cùng key nhưng nội dung khác → 409. Kết quả được lưu cùng transaction với Submission,
+   * nên ai thấy bản ghi cũng thấy kết quả của nó.
+   */
   async submit(
     userId: string,
     lessonId: string,

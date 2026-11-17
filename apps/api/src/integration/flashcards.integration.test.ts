@@ -1,4 +1,5 @@
 import { requireSandbox, deleteFixtureCourses } from './safety';
+import Redis from 'ioredis';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '@learn/db';
 import { env } from '../environment';
@@ -1097,6 +1098,37 @@ afterAll(async () => {
     it("returns 404 for another learner's lesson", async () => {
       const res = await check(other, { type: 'TRUE_FALSE', questionId: tfId, value: true });
       expect(res.status).toBe(404);
+    });
+  });
+}
+
+// ── Rate limit theo người học ─────────────────────────────────────────────────────────────────
+{
+  // `@Throttle` chỉ gắn metadata; phải có `RateLimitGuard` chạy SAU `AuthGuard` thì khóa mới theo
+  // userId. Body rỗng vẫn đi qua guard (guard chạy trước pipe) nên không ghi dữ liệu nào.
+  describe('Rate limit theo người học', () => {
+    const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+    const clear = async () => {
+      const keys = await redis.keys(`rl:${owner.userId}:*`);
+      if (keys.length) await redis.del(...keys);
+    };
+
+    beforeAll(clear);
+    afterAll(async () => {
+      await clear();
+      redis.disconnect();
+    });
+
+    it('đếm lượt chấm từng câu và feedback theo userId', async () => {
+      const lessonId = crypto.randomUUID();
+      expect((await call(owner, 'POST', `/lessons/${lessonId}/exercise/check`, {})).status).toBe(
+        400,
+      );
+      expect((await call(owner, 'POST', '/feedback', {})).status).toBe(400);
+      const prefix = `rl:${owner.userId}:/api/v1`;
+      expect(await redis.get(`${prefix}/lessons/:lessonId/exercise/check`)).toBe('1');
+      expect(await redis.ttl(`${prefix}/lessons/:lessonId/exercise/check`)).toBeGreaterThan(0);
+      expect(await redis.get(`${prefix}/feedback`)).toBe('1');
     });
   });
 }
