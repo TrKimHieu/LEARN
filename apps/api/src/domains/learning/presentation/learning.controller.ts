@@ -1,15 +1,34 @@
-import { Controller, Get, Patch, Post, Delete, Body, Headers, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Delete,
+  Body,
+  Headers,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { z } from 'zod';
 import {
   patchLessonSchema,
   reorderLessonsSchema,
+  checkAnswerSchema,
   submitExerciseSchema,
+  type CheckAnswerInput,
   type PatchLessonInput,
   type ReorderLessonsInput,
   type SubmitExerciseInput,
 } from '@learn/contracts';
 import { zodBody, zodParam } from '../../../core/exceptions/errors';
-import { Auth, CurrentUser, type UserContext } from '../../../core/security';
+import {
+  Auth,
+  CurrentUser,
+  RateLimitGuard,
+  Throttle,
+  type UserContext,
+} from '../../../core/security';
 import { LessonsService } from '../application/lessons.service';
 import { ExercisesService } from '../application/exercises.service';
 import { parseIdempotencyKey } from '../application/submit-idempotency';
@@ -106,6 +125,20 @@ export class LearningController {
     @Query('exerciseId', zodParam(idSchema.optional())) exerciseId: string | undefined,
   ) {
     return this.exercises.getExerciseRead(user.userId, lessonId, exerciseId);
+  }
+
+  @Post('lessons/:lessonId/exercise/check')
+  // Above @Auth(): decorators apply bottom-up and UseGuards appends, so this runs after AuthGuard
+  // and the limit is keyed by userId.
+  @UseGuards(RateLimitGuard)
+  @Auth()
+  @Throttle(120, 60)
+  async check(
+    @CurrentUser() user: UserContext,
+    @Param('lessonId', zodParam(idSchema)) lessonId: string,
+    @Body(zodBody(checkAnswerSchema)) body: CheckAnswerInput,
+  ) {
+    return this.exercises.check(user.userId, lessonId, body);
   }
 
   @Post('lessons/:lessonId/exercise/submit')

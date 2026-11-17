@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@learn/db';
 import type {
+  CheckAnswerInput,
+  CheckResult,
   ExerciseNavItem,
   ExerciseRead,
   SubmitExerciseInput,
@@ -126,6 +128,21 @@ export class ExercisesService {
         passed: bestScore !== null && bestScore >= e.passScore,
       };
     });
+  }
+
+  /** Luyện tập: chấm đúng một câu, không ghi gì vào DB. */
+  async check(userId: string, lessonId: string, input: CheckAnswerInput): Promise<CheckResult> {
+    await this.assertLessonAccess(userId, lessonId);
+    const exercise = await this.exercises.findForLesson(lessonId, input.exerciseId);
+    if (!exercise) throw ApiError.notFound('Không có bài tập này trong bài học.');
+    const q = exercise.questions.find((x) => x.id === input.answer.questionId);
+    if (!q) throw ApiError.badRequest('Câu hỏi không thuộc bài tập.');
+    return {
+      questionId: q.id,
+      isCorrect: gradeAnswer(q, input.answer).isCorrect,
+      correctAnswer: publicCorrectAnswer(q),
+      explanation: q.explanation,
+    };
   }
 
   /**
@@ -374,7 +391,7 @@ export function gradeSubmission(
  * không đáng tin: worker lưu `{ correctIndex }`, seed lưu `{ optionId }`, còn web chỉ đọc
  * `optionId`, nên trước đây bài AI sinh không bao giờ được chỉ ra đáp án đúng ở màn kết quả.
  */
-function publicCorrectAnswer(q: GradableQuestion): unknown {
+export function publicCorrectAnswer(q: GradableQuestion): unknown {
   if (q.type === 'MULTIPLE_CHOICE') {
     return { optionId: q.options.find((o) => o.isCorrect)?.id ?? null };
   }

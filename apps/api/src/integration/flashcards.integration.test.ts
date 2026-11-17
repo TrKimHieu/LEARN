@@ -1,4 +1,5 @@
 import { requireSandbox, deleteFixtureCourses } from './safety';
+import Redis from 'ioredis';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '@learn/db';
 import { env } from '../environment';
@@ -1000,6 +1001,134 @@ afterAll(async () => {
       } finally {
         await prisma.user.deleteMany({ where: { email: fresh.email } });
       }
+    });
+  });
+}
+
+// ── Chấm từng câu (luyện tập, không lưu) ──────────────────────────────────────────────────────
+{
+  describe('Chấm từng câu', () => {
+    let lessonId: string;
+    let exerciseId: string;
+    let mcqId: string;
+    let tfId: string;
+    let rightOptionId: string;
+    const check = (s: Session, answer: unknown, id = lessonId) =>
+      call(s, 'POST', `/lessons/${id}/exercise/check`, { exerciseId, answer });
+
+    beforeAll(async () => {
+      const course = await prisma.course.create({
+        data: { ownerId: owner.userId, title: 'Khóa chấm từng câu' },
+      });
+      const lesson = await prisma.lesson.create({
+        data: { courseId: course.id, orderIndex: 0, title: 'Bài', contentMd: 'Nội dung.' },
+      });
+      lessonId = lesson.id;
+      const exercise = await prisma.exercise.create({
+        data: { lessonId, orderIndex: 0, title: 'Luyện' },
+      });
+      exerciseId = exercise.id;
+      const mcq = await prisma.question.create({
+        data: {
+          exerciseId,
+          orderIndex: 0,
+          type: 'MULTIPLE_CHOICE',
+          prompt: 'Chọn đúng',
+          explanation: 'Vì A đúng.',
+          correctAnswer: {},
+          options: {
+            create: [
+              { orderIndex: 0, label: 'A', content: 'Đúng', isCorrect: true },
+              { orderIndex: 1, label: 'B', content: 'Sai', isCorrect: false },
+            ],
+          },
+        },
+        include: { options: true },
+      });
+      mcqId = mcq.id;
+      rightOptionId = mcq.options.find((o) => o.isCorrect)!.id;
+      const tf = await prisma.question.create({
+        data: {
+          exerciseId,
+          orderIndex: 1,
+          type: 'TRUE_FALSE',
+          prompt: 'Đúng hay sai',
+          correctAnswer: { value: true },
+        },
+      });
+      tfId = tf.id;
+    });
+
+    it('grades one correct multiple-choice answer and writes nothing', async () => {
+      const before = await prisma.submission.count({ where: { userId: owner.userId } });
+      const res = await check(owner, {
+        type: 'MULTIPLE_CHOICE',
+        questionId: mcqId,
+        optionId: rightOptionId,
+      });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toMatchObject({
+        questionId: mcqId,
+        isCorrect: true,
+        correctAnswer: { optionId: rightOptionId },
+        explanation: 'Vì A đúng.',
+      });
+      expect(await prisma.submission.count({ where: { userId: owner.userId } })).toBe(before);
+    });
+
+    it('returns isCorrect false with the right answer for a wrong true/false', async () => {
+      const res = await check(owner, { type: 'TRUE_FALSE', questionId: tfId, value: false });
+      expect(res.status).toBe(201);
+      expect(await res.json()).toMatchObject({
+        questionId: tfId,
+        isCorrect: false,
+        correctAnswer: { value: true },
+      });
+    });
+
+    it('rejects a question from another exercise with 400', async () => {
+      const res = await check(owner, {
+        type: 'TRUE_FALSE',
+        questionId: crypto.randomUUID(),
+        value: true,
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 404 for another learner's lesson", async () => {
+      const res = await check(other, { type: 'TRUE_FALSE', questionId: tfId, value: true });
+      expect(res.status).toBe(404);
+    });
+  });
+}
+
+// ── Rate limit theo người học ─────────────────────────────────────────────────────────────────
+{
+  // `@Throttle` chỉ gắn metadata; phải có `RateLimitGuard` chạy SAU `AuthGuard` thì khóa mới theo
+  // userId. Body rỗng vẫn đi qua guard (guard chạy trước pipe) nên không ghi dữ liệu nào.
+  describe('Rate limit theo người học', () => {
+    const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+    const clear = async () => {
+      const keys = await redis.keys(`rl:${owner.userId}:*`);
+      if (keys.length) await redis.del(...keys);
+    };
+
+    beforeAll(clear);
+    afterAll(async () => {
+      await clear();
+      redis.disconnect();
+    });
+
+    it('đếm lượt chấm từng câu và feedback theo userId', async () => {
+      const lessonId = crypto.randomUUID();
+      expect((await call(owner, 'POST', `/lessons/${lessonId}/exercise/check`, {})).status).toBe(
+        400,
+      );
+      expect((await call(owner, 'POST', '/feedback', {})).status).toBe(400);
+      const prefix = `rl:${owner.userId}:/api/v1`;
+      expect(await redis.get(`${prefix}/lessons/:lessonId/exercise/check`)).toBe('1');
+      expect(await redis.ttl(`${prefix}/lessons/:lessonId/exercise/check`)).toBeGreaterThan(0);
+      expect(await redis.get(`${prefix}/feedback`)).toBe('1');
     });
   });
 }

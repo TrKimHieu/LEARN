@@ -10,7 +10,7 @@ const root = resolve(import.meta.dirname, '../..');
 // Phiên bản phát hành: `--version x.y.z` hoặc mặc định bên dưới. Cùng major 1 với bản app đang dùng.
 const version = process.argv.includes('--version')
   ? process.argv[process.argv.indexOf('--version') + 1]
-  : '1.7.0';
+  : '1.8.0';
 if (!/^1\.\d+\.\d+$/.test(version)) throw new Error(`Unsupported contracts version: ${version}`);
 const out = resolve(
   process.argv.includes('--out')
@@ -184,6 +184,8 @@ for (const operation of operations) {
     responseSchema = ref('exerciseReadSchema');
   if (path === '/api/v1/lessons/{lessonId}/exercise/submit')
     responseSchema = ref('submissionSchema');
+  if (path === '/api/v1/lessons/{lessonId}/exercise/check')
+    responseSchema = ref('checkResultSchema');
   if (responseSchema) response.content = { 'application/json': { schema: responseSchema } };
   else entry['x-response-schema-status'] = 'not-yet-typed';
   if (path.endsWith('/stream')) {
