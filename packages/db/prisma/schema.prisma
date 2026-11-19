@@ -25,6 +25,10 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
+  /// Mã mời kết bạn 8 ký tự; sinh khi người dùng mở màn Bạn học lần đầu.
+  friendCode        String?   @unique
+  /// Ẩn mình khỏi bảng xếp hạng của bạn bè (vẫn kết bạn được).
+  leaderboardHidden Boolean   @default(false)
 
   subscriptions       Subscription[]
   courses             Course[]
@@ -43,6 +47,9 @@ model User {
   passwordResetTokens PasswordResetToken[]
   usage               UsageCounter[]
   auditLogs           AuditLog[]
+  xpEvents            XpEvent[]
+  friendsRequested    Friendship[] @relation("FriendRequester")
+  friendsReceived     Friendship[] @relation("FriendAddressee")
 }
 
 enum UserRole {
@@ -664,4 +671,41 @@ model Feedback {
 
   @@index([topic, question, createdAt])
   @@index([userId, createdAt])
+}
+
+/// Sổ XP bất biến (ADR 006 mobile, spec 2026-11-20). Mỗi nguồn cộng tối đa một lần mỗi ngày học.
+model XpEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  /// SUBMISSION | CARD_REVIEW | FLASHCARD_REVIEW
+  source    String
+  /// exerciseId, questionId hoặc flashcardId
+  refId     String
+  /// Ngày học YYYY-MM-DD theo APP_TIMEZONE
+  day       String
+  amount    Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, source, refId, day])
+  @@index([userId, day])
+}
+
+/// Quan hệ bạn học. Một cặp người dùng chỉ có một dòng (dịch vụ kiểm cả hai chiều).
+model Friendship {
+  id          String    @id @default(uuid())
+  requesterId String
+  addresseeId String
+  /// PENDING | ACCEPTED
+  status      String
+  createdAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+
+  requester User @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, createdAt])
 }
