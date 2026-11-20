@@ -20,6 +20,8 @@ import {
   isIdempotencyKeyViolation,
   submissionFingerprint,
 } from './submit-idempotency';
+import { XpService } from '../../gamification/application/xp.service';
+import { submissionXp } from '../../gamification/application/xp-rules';
 
 export interface GradedAnswer {
   questionId: string;
@@ -56,6 +58,7 @@ export class ExercisesService {
     private readonly exercises: ExerciseRepository,
     private readonly submissions: SubmissionRepository,
     private readonly progress: LearningProgressRepository,
+    private readonly xp: XpService,
   ) {}
 
   /**
@@ -208,6 +211,7 @@ export class ExercisesService {
         lessonId,
         exerciseId: exercise.id,
         percent,
+        passed,
         durationMs: input.durationMs ?? null,
         results,
         answerByQuestion,
@@ -259,6 +263,7 @@ export class ExercisesService {
     lessonId: string;
     exerciseId: string;
     percent: number;
+    passed: boolean;
     durationMs: number | null;
     results: GradedAnswer[];
     answerByQuestion: Map<string, SubmittedAnswer>;
@@ -305,6 +310,14 @@ export class ExercisesService {
             lessonId: args.lessonId,
             percent: args.percent,
             lessonComplete,
+          });
+
+          // XP cho lần nộp đầu trong ngày của bài tập này (khoá duy nhất chặn lần sau).
+          await this.xp.award(tx, {
+            userId: args.userId,
+            source: 'SUBMISSION',
+            refId: args.exerciseId,
+            amount: submissionXp(args.passed),
           });
 
           const result = args.toResult({ ...created, lessonCompleted: lessonComplete });

@@ -25,6 +25,8 @@ import { idempotencyKeyReused, isIdempotencyKeyViolation } from '../../../core/s
 import { reviewCard } from '../../../core/srs/review';
 import { PrismaService } from '../../../infra/services';
 import { FlashcardRepository, type DeckCounts } from '../infrastructure/flashcard.repository';
+import { XpService } from '../../gamification/application/xp.service';
+import { REVIEW_XP } from '../../gamification/application/xp-rules';
 
 const NO_DECK = 'Không tìm thấy bộ thẻ.';
 const NO_CARD = 'Không tìm thấy thẻ.';
@@ -73,6 +75,7 @@ export class FlashcardsService {
   constructor(
     private readonly repo: FlashcardRepository,
     private readonly prisma: PrismaService,
+    private readonly xp: XpService,
   ) {}
 
   async createDeck(userId: string, input: CreateDeckInput): Promise<DeckSummary> {
@@ -208,6 +211,10 @@ export class FlashcardsService {
           requestHash,
           response: result as unknown as Prisma.InputJsonValue,
         });
+        // Lượt chấm cũ hơn lần cuối không đổi lịch, cũng không cộng XP.
+        if (outcome.applied) {
+          await this.xp.award(tx, { userId, source: 'FLASHCARD_REVIEW', refId: cardId, amount: REVIEW_XP });
+        }
         return result;
       });
     } catch (e) {
