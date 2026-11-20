@@ -3,8 +3,15 @@ import { newId } from '@learn/db';
 import type { Prisma } from '@learn/db';
 import { env } from '../../../environment';
 import { PrismaService } from '../../../infra/services';
-import { localDayKey } from '../../learning/application/day-key';
-import { DAILY_XP_CAP, grantable, weekStartKey, type XpSource } from './xp-rules';
+import { localDayKey } from '../../../core/day-key';
+import {
+  DAILY_XP_CAP,
+  grantable,
+  REVIEW_XP,
+  submissionXp,
+  weekStartKey,
+  type XpSource,
+} from './xp-rules';
 
 export interface XpSummary {
   xpToday: number;
@@ -24,7 +31,7 @@ export class XpService {
    */
   async award(
     tx: Prisma.TransactionClient,
-    input: { userId: string; source: XpSource; refId: string; amount: number },
+    input: { userId: string; source: XpSource; refId: string; passed?: boolean },
     now = new Date(),
   ): Promise<number> {
     const day = localDayKey(now, env.APP_TIMEZONE);
@@ -33,10 +40,20 @@ export class XpService {
       where: { userId: input.userId, day },
       _sum: { amount: true },
     });
-    const amount = grantable(input.amount, today._sum.amount ?? 0);
+    const base = input.source === 'SUBMISSION' ? submissionXp(input.passed ?? false) : REVIEW_XP;
+    const amount = grantable(base, today._sum.amount ?? 0);
     if (amount <= 0) return 0;
     const { count } = await tx.xpEvent.createMany({
-      data: [{ id: newId(), userId: input.userId, source: input.source, refId: input.refId, day, amount }],
+      data: [
+        {
+          id: newId(),
+          userId: input.userId,
+          source: input.source,
+          refId: input.refId,
+          day,
+          amount,
+        },
+      ],
       skipDuplicates: true,
     });
     return count > 0 ? amount : 0;
@@ -45,7 +62,10 @@ export class XpService {
   async summary(userId: string, now = new Date()): Promise<XpSummary> {
     const today = localDayKey(now, env.APP_TIMEZONE);
     const [day, week, total] = await Promise.all([
-      this.prisma.client.xpEvent.aggregate({ where: { userId, day: today }, _sum: { amount: true } }),
+      this.prisma.client.xpEvent.aggregate({
+        where: { userId, day: today },
+        _sum: { amount: true },
+      }),
       this.prisma.client.xpEvent.aggregate({
         where: { userId, day: { gte: weekStartKey(today) } },
         _sum: { amount: true },

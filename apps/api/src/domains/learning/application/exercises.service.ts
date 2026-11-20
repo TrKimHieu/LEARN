@@ -21,7 +21,6 @@ import {
   submissionFingerprint,
 } from './submit-idempotency';
 import { XpService } from '../../gamification/application/xp.service';
-import { submissionXp } from '../../gamification/application/xp-rules';
 
 export interface GradedAnswer {
   questionId: string;
@@ -317,7 +316,7 @@ export class ExercisesService {
             userId: args.userId,
             source: 'SUBMISSION',
             refId: args.exerciseId,
-            amount: submissionXp(args.passed),
+            passed: args.passed,
           });
 
           const result = args.toResult({ ...created, lessonCompleted: lessonComplete });

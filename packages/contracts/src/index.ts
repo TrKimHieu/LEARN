@@ -18,3 +18,4 @@ export * from './version';
 export * from './review';
 export * from './flashcard';
 export * from './feedback';
+export * from './friends';

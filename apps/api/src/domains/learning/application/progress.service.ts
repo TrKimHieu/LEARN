@@ -12,7 +12,7 @@ import { LessonRepository } from '../infrastructure/repositories/lesson.reposito
 import { LearningProgressRepository } from '../infrastructure/repositories/learning-progress.repository';
 import { SubmissionRepository } from '../infrastructure/repositories/submission.repository';
 import { XpService } from '../../gamification/application/xp.service';
-import { localDayKey, previousDayKey, utcDayKey } from './day-key';
+import { localDayKey, previousDayKey, utcDayKey } from '../../../core/day-key';
 
 /**
  * Chuỗi ngày học liên tiếp chỉ cần nhìn lại tối đa ngần này ngày. Chuỗi dài hơn 1 năm
@@ -168,5 +168,5 @@ export class ProgressService {
   }
 }
 
-// Giữ đường import cũ (test, integration) sau khi tách hàm ngày sang `day-key.ts`.
-export { localDayKey, previousDayKey, utcDayKey } from './day-key';
+// Giữ đường import cũ (test, integration) sau khi tách hàm ngày sang `core/day-key.ts`.
+export { localDayKey, previousDayKey, utcDayKey } from '../../../core/day-key';

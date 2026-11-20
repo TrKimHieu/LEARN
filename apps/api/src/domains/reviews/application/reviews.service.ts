@@ -13,7 +13,6 @@ import { idempotencyKeyReused, isIdempotencyKeyViolation } from '../../../core/s
 import { ReviewRepository } from '../infrastructure/review.repository';
 import { reviewCard } from '../../../core/srs/review';
 import { XpService } from '../../gamification/application/xp.service';
-import { REVIEW_XP } from '../../gamification/application/xp-rules';
 
 const DAY_MS = 86_400_000;
 
@@ -148,7 +147,7 @@ export class ReviewsService {
         });
         // Lượt chấm cũ hơn lần cuối không đổi lịch, cũng không cộng XP.
         if (outcome.applied) {
-          await this.xp.award(tx, { userId, source: 'CARD_REVIEW', refId: questionId, amount: REVIEW_XP });
+          await this.xp.award(tx, { userId, source: 'CARD_REVIEW', refId: questionId });
         }
         return result;
       });
