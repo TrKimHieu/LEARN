@@ -12,6 +12,7 @@ import { PrismaService } from '../../../infra/services';
 import { idempotencyKeyReused, isIdempotencyKeyViolation } from '../../../core/srs/idempotency';
 import { ReviewRepository } from '../infrastructure/review.repository';
 import { reviewCard } from '../../../core/srs/review';
+import { XpService } from '../../gamification/application/xp.service';
 
 const DAY_MS = 86_400_000;
 
@@ -54,6 +55,7 @@ export class ReviewsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reviews: ReviewRepository,
+    private readonly xp: XpService,
   ) {}
 
   /** Sinh lịch cho câu hỏi đã nộp mà chưa có thẻ, rồi trả các thẻ đến hạn (gần hạn nhất trước). */
@@ -143,6 +145,10 @@ export class ReviewsService {
           requestHash,
           response: result as unknown as Prisma.InputJsonValue,
         });
+        // Lượt chấm cũ hơn lần cuối không đổi lịch, cũng không cộng XP.
+        if (outcome.applied) {
+          await this.xp.award(tx, { userId, source: 'CARD_REVIEW', refId: questionId });
+        }
         return result;
       });
     } catch (e) {

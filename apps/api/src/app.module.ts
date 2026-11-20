@@ -10,6 +10,7 @@ import { LearningModule } from './domains/learning/learning.module';
 import { ReviewsModule } from './domains/reviews/reviews.module';
 import { FlashcardsModule } from './domains/flashcards/flashcards.module';
 import { FeedbackModule } from './domains/feedback/feedback.module';
+import { GamificationModule } from './domains/gamification/gamification.module';
 import { SubscriptionsModule } from './domains/subscriptions/subscriptions.module';
 import { AiModule } from './domains/ai/ai.module';
 import { AdminModule } from './domains/admin/admin.module';
@@ -27,6 +28,7 @@ import { AdminModule } from './domains/admin/admin.module';
     ReviewsModule,
     FlashcardsModule,
     FeedbackModule,
+    GamificationModule,
     SubscriptionsModule,
     AiModule,
     AdminModule,

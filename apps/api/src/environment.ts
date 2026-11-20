@@ -53,6 +53,11 @@ const envSchema = z.object({
     .string()
     .default('Asia/Ho_Chi_Minh')
     .refine(isValidTimeZone, { message: 'Không phải tên múi giờ IANA hợp lệ' }),
+  /** Tắt (`false`) thì mọi API `/friends` trả 404; XP vẫn ghi bình thường. */
+  FRIENDS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   API_URL: z.string().url().default('http://localhost:4000'),
   DATABASE_URL: z
     .string()
