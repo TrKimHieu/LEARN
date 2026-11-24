@@ -1,0 +1,177 @@
+import { onlineManager, useQueryClient } from '@tanstack/react-query';
+import { persistQueryClient } from '@tanstack/react-query-persist-client';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
+import { useAuth } from '@/features/auth/auth-context';
+import { apiFetch } from '@/lib/api-client';
+import { config } from '@/lib/config';
+import { dbNameFor } from '@/lib/db/scope';
+import { deleteAccountDb, openAccountDb } from '@/lib/db/sqlite';
+import type { KvStore, OutboxStore, SourceFileStore } from '@/lib/db/stores';
+import { deleteSourceDir } from '@/lib/source-files';
+import { enqueue, flushOutbox, setOutboxSink } from '@/lib/offline/outbox';
+import { createKvPersister, PERSIST_MAX_AGE, persistBuster, shouldPersistQuery } from '@/lib/offline/persister';
+import { isTesting, subscribeTesting } from '@/lib/testing-mode';
+
+type OfflineValue = {
+  /** Số thao tác đang chờ gửi lên máy chủ. */
+  pendingCount: number;
+  countPending: () => Promise<number>;
+  flush: () => Promise<void>;
+  /** Đăng xuất hẳn: ngừng lưu cache, xoá DB của tài khoản này khỏi máy. */
+  discard: () => Promise<void>;
+  /** Chỉ mục bản sao tệp gốc của tài khoản đang mở; null khi chưa mở DB hoặc đang Testing. */
+  sources: { store: SourceFileStore; dbName: string } | null;
+  /** kv của DB tài khoản (thời gian học cục bộ...); null khi chưa mở DB hoặc đang Testing. */
+  kv: KvStore | null;
+};
+
+const OfflineContext = createContext<OfflineValue>({
+  pendingCount: 0,
+  countPending: async () => 0,
+  flush: async () => {},
+  discard: async () => {},
+  sources: null,
+  kv: null,
+});
+
+type Session = {
+  name: string;
+  outbox: OutboxStore;
+  sourceFiles: SourceFileStore;
+  close: () => Promise<void>;
+  stopPersist: () => void;
+};
+
+/**
+ * Cache đọc + hàng chờ gửi theo tài khoản (ADR R2). Mở DB khi có user, đóng khi user rời đi.
+ * Hết phiên (không phải đăng xuất) chỉ đóng DB — đăng nhập lại cùng tài khoản vẫn còn hàng chờ.
+ */
+export function OfflineProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
+  const auth = useAuth();
+  // Demo data never opens a real account's cache or queues writes for later sync.
+  const userId = auth.testing ? null : auth.user?.id ?? null;
+  const session = useRef<Session | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [sources, setSources] = useState<OfflineValue['sources']>(null);
+  const [kv, setKv] = useState<KvStore | null>(null);
+
+  const refreshCount = useCallback(async () => {
+    setPendingCount(session.current ? await session.current.outbox.count() : 0);
+  }, []);
+
+  const flush = useCallback(async () => {
+    const s = session.current;
+    if (!s || isTesting() || !onlineManager.isOnline()) return;
+    const { sent } = await flushOutbox(s.outbox, (item) => {
+      if (isTesting()) return Promise.reject(new Error('Testing: pause real outbox.'));
+      return apiFetch(item.path, {
+        method: item.method,
+        body: item.body ? JSON.parse(item.body) : undefined,
+        // Gửi lại cùng key: server trả kết quả lần đầu thay vì ghi thêm (LEARN_backend#7).
+        headers: { 'Idempotency-Key': item.eventId },
+      }).then(() => undefined);
+    });
+    await refreshCount();
+    // Bài nộp / bài bắt đầu từ hàng chờ đã tới server: tiến độ và điểm trên máy đã cũ.
+    if (sent > 0) await queryClient.invalidateQueries();
+  }, [refreshCount, queryClient]);
+
+  const closeSession = useCallback(async () => {
+    const s = session.current;
+    session.current = null;
+    setOutboxSink(null);
+    setPendingCount(0);
+    setSources(null);
+    setKv(null);
+    if (!s) return null;
+    s.stopPersist();
+    await s.close().catch(() => undefined);
+    return s.name;
+  }, []);
+
+  // Stop persistence synchronously before any demo query can publish data.
+  useEffect(() => subscribeTesting(() => {
+    if (isTesting()) void closeSession();
+  }), [closeSession]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const name = dbNameFor({ environment: config.environment, origin: config.apiUrl, userId });
+    (async () => {
+      const db = await openAccountDb(name);
+      if (cancelled || isTesting()) {
+        await db.close();
+        return;
+      }
+      const current: Session = {
+        name, outbox: db.outbox, sourceFiles: db.sourceFiles, close: db.close, stopPersist: () => {},
+      };
+      session.current = current;
+      setSources({ store: db.sourceFiles, dbName: name });
+      setKv(db.kv);
+      const persister = createKvPersister(db.kv);
+      const restore = persister.restoreClient;
+      persister.restoreClient = async () => {
+        const cached = await restore();
+        // Unsubscribing persistence cannot cancel an already-running SQLite read.
+        return !cancelled && !isTesting() && session.current === current ? cached : undefined;
+      };
+      const [stopPersist] = persistQueryClient({
+        queryClient,
+        persister,
+        maxAge: PERSIST_MAX_AGE,
+        buster: persistBuster(),
+        dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
+      });
+      current.stopPersist = stopPersist;
+      setOutboxSink(async (req) => {
+        await enqueue(db.outbox, req);
+        await refreshCount();
+      });
+      await refreshCount();
+      await flush();
+    })().catch(() => {
+      // Không mở được DB: app vẫn chạy online như trước, chỉ thiếu cache offline.
+    });
+    return () => {
+      cancelled = true;
+      void closeSession();
+    };
+  }, [userId, queryClient, refreshCount, flush, closeSession]);
+
+  // Gửi hàng chờ khi có mạng lại và khi app quay về foreground.
+  useEffect(() => {
+    const offOnline = onlineManager.subscribe((online) => {
+      if (online) void flush();
+    });
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void flush();
+    });
+    return () => {
+      offOnline();
+      sub.remove();
+    };
+  }, [flush]);
+
+  const discard = useCallback(async () => {
+    const name = await closeSession();
+    if (name) {
+      await deleteAccountDb(name);
+      deleteSourceDir(name);
+    }
+  }, [closeSession]);
+
+  const countPending = useCallback(async () => (session.current ? session.current.outbox.count() : 0), []);
+  const value = useMemo(
+    () => ({ pendingCount, countPending, flush, discard, sources, kv }),
+    [pendingCount, countPending, flush, discard, sources, kv],
+  );
+  return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;
+}
+
+export function useOffline(): OfflineValue {
+  return useContext(OfflineContext);
+}

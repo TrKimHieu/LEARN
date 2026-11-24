@@ -1,0 +1,174 @@
+import { useEffect } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button, Txt } from '@/components/ui';
+import { LogoMark, Mascot } from '@/components/mascot';
+import { AuthProvider, useAuth } from '@/features/auth/auth-context';
+import { queryClient } from '@/lib/query-client';
+import { OfflinePill } from '@/components/offline-pill';
+import { ServerConnectionScreen, TestingBanner } from '@/components/server-connection-screen';
+import { OfflineProvider } from '@/features/offline/offline-provider';
+import { startNetworkSync } from '@/lib/offline/network';
+import { FONT_SOURCES } from '@/theme/fonts';
+import { ThemeProvider, usePalette } from '@/theme/theme';
+import { dark, font, light, space } from '@/theme/tokens';
+
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(FONT_SOURCES);
+  // Trạng thái mạng thật vào onlineManager của React Query (R2) — một lần cho cả app.
+  useEffect(() => startNetworkSync(), []);
+  // Lỗi nạp font thì vẫn chạy bằng font hệ thống, không kẹt ở màn trắng.
+  if (!fontsLoaded && !fontError) return null;
+
+  return (
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <OfflineProvider>
+              <View style={{ flex: 1 }}>
+                <TestingBanner />
+                <RootNavigator />
+                <ServerConnectionScreen />
+              </View>
+              <OfflineBadge />
+            </OfflineProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </SafeAreaProvider>
+  );
+}
+
+/**
+ * Lỗi render không bắt được ở màn nào — như `apps/web/src/app/error.tsx`. Chạy THAY cho layout gốc
+ * nên không có ThemeProvider/QueryClient: tự chọn bảng màu theo hệ thống, chỉ dùng component RN
+ * thuần. Không hiện stack trace cho người dùng.
+ */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  const scheme = useColorScheme();
+  const p = scheme === 'dark' ? dark : light;
+  return (
+    <View style={[styles.center, { backgroundColor: p.app, padding: space.xl }]}>
+      <Text style={{ fontSize: 22, fontWeight: '700', color: p.fg, textAlign: 'center' }}>Đã có lỗi xảy ra</Text>
+      <Text style={{ fontSize: 15, lineHeight: 22, color: p.fgSubtle, textAlign: 'center' }}>
+        Ứng dụng gặp lỗi không lường trước. Thử lại, nếu vẫn lỗi hãy đóng hẳn ứng dụng rồi mở lại.
+      </Text>
+      <Pressable
+        onPress={() => void retry()}
+        accessibilityRole="button"
+        style={{ backgroundColor: p.primary, borderRadius: 8, paddingHorizontal: space.xl, paddingVertical: space.md }}
+      >
+        <Text style={{ color: p.primaryFg, fontSize: 16, fontWeight: '600' }}>Thử lại</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * Root Stack — bài giảng Navigation §4.3.4 / §4.7 (DocsTest):
+ * - `(auth)` và phần còn lại bảo vệ bằng `Stack.Protected`: chưa đăng nhập thì các route trong app
+ *   không tồn tại, deep link vào đó tự rơi về đăng nhập; đăng nhập xong tự chuyển vào app.
+ * - `(tabs)`: 4 đích cấp cao ngang hàng (như thanh điều hướng web).
+ * - Chi tiết khóa học / đọc bài / bài tập nằm ở Root Stack, ngoài Tabs → che tab bar khi đi sâu.
+ * - Tạo khóa học, sửa bài học: `modal` — tác vụ tạm thời cần tập trung.
+ */
+/** Viên "Offline" nổi ở góc trên, không chặn chạm vào nội dung bên dưới. */
+function OfflineBadge() {
+  const insets = useSafeAreaInsets();
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + space.xs, right: insets.right + space.lg }}>
+      <OfflinePill />
+    </View>
+  );
+}
+
+function RootNavigator() {
+  const { status, retry, user, enterTesting } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  const p = usePalette();
+
+  if (status === 'loading') {
+    return (
+      <View style={[styles.center, { backgroundColor: p.app }]}>
+        <StatusBar style={p.scheme === 'dark' ? 'light' : 'dark'} />
+        <LogoMark size={56} />
+        <ActivityIndicator color={p.fgSubtle} />
+      </View>
+    );
+  }
+
+  if (status === 'offline') {
+    return (
+      <View style={[styles.center, { backgroundColor: p.app, padding: space.xl }]}>
+        <StatusBar style={p.scheme === 'dark' ? 'light' : 'dark'} />
+        <Mascot state="alerting" size={88} />
+        <Txt variant="heading" style={{ textAlign: 'center' }}>
+          Sản phẩm đang không kết nối được với server
+        </Txt>
+        <Txt variant="small" tone="subtle" style={{ textAlign: 'center' }}>
+          Phiên đăng nhập vẫn được giữ trên máy. Kiểm tra kết nối Internet rồi thử lại.
+        </Txt>
+        <Button label="Thử lại" icon="retry" onPress={retry} />
+        <Button label="Testing" variant="secondary" onPress={() => void enterTesting()} />
+      </View>
+    );
+  }
+
+  const authed = status === 'authed';
+
+  return (
+    <>
+      <StatusBar style={p.scheme === 'dark' ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: p.app },
+          headerTintColor: p.fg,
+          headerTitleStyle: { fontFamily: font.semibold, fontSize: 17, color: p.fg },
+          headerShadowVisible: false,
+          headerBackButtonDisplayMode: 'minimal',
+          contentStyle: { backgroundColor: p.app },
+        }}
+      >
+        <Stack.Protected guard={authed}>
+          {/* `title` không hiện (header ẩn) nhưng là nhãn nút quay lại của màn con; thiếu thì trình đọc màn hình đọc "(tabs)". */}
+          <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Trang chính' }} />
+          <Stack.Screen name="review" options={{ title: 'Ôn tập' }} />
+          <Stack.Screen name="storage" options={{ title: 'Quản lý dung lượng' }} />
+          <Stack.Screen name="settings" options={{ title: 'Cài đặt' }} />
+          <Stack.Screen name="focus" options={{ title: 'Pomodoro' }} />
+          <Stack.Screen name="deck/[deckId]" options={{ title: 'Bộ thẻ' }} />
+          <Stack.Screen name="deck-review" options={{ title: 'Ôn thẻ' }} />
+          <Stack.Screen name="flashcards-generate" options={{ title: 'Sinh thẻ bằng AI' }} />
+          <Stack.Screen name="flashcards-drafts" options={{ title: 'Thẻ nháp' }} />
+          <Stack.Screen name="course/new"options={{ presentation: 'modal', title: 'Tạo khóa học' }} />
+          <Stack.Screen name="course/[courseId]/index" options={{ title: 'Khóa học' }} />
+          <Stack.Screen name="course/[courseId]/lesson/[lessonId]/index" options={{ title: 'Bài học' }} />
+          <Stack.Screen name="course/[courseId]/lesson/[lessonId]/practice" options={{ title: 'Bài tập' }} />
+          <Stack.Screen
+            name="course/[courseId]/lesson/[lessonId]/edit"
+            options={{ presentation: 'modal', title: 'Sửa bài học' }}
+          />
+        </Stack.Protected>
+        {/* Quản trị rút gọn: lớp UX — server chặn thật bằng RolesGuard. */}
+        <Stack.Protected guard={authed && isAdmin}>
+          <Stack.Screen name="admin/index" options={{ title: 'Quản trị' }} />
+          <Stack.Screen name="admin/ai-jobs/index" options={{ title: 'AI Job' }} />
+          <Stack.Screen name="admin/directory" options={{ title: 'Quản trị' }} />
+          <Stack.Screen name="admin/ai-jobs/[jobId]" options={{ title: 'AI Job' }} />
+        </Stack.Protected>
+        <Stack.Protected guard={!authed}>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        </Stack.Protected>
+      </Stack>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.lg },
+});
