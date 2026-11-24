@@ -10,3 +10,8 @@
 artifacts
 coverage
 docs/migration
+**/.next
+**/.expo
+# Image backend không cần web/mobile. infra/Dockerfile.web.dockerignore thay file này khi build image web.
+apps/web
+apps/mobile

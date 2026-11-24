@@ -1,10 +1,10 @@
-# LEARN shared backend
+# LEARN
 
-Private backend source for web and mobile clients maintained in separate repositories. API and worker remain separate processes; no microservice/data split is performed in M0/M1.
+Monorepo for the LEARN API, background workers, web app (`apps/web`) and mobile app (`apps/mobile`). API and worker remain separate processes. One npm workspace and one root `package-lock.json`; web and mobile import `@learn/contracts` from `packages/contracts`. See `apps/web/README.md` and `apps/mobile/README.md` for the clients, and `docs/migration/github-vars.md` for CI variables.
 
 ## Setup
 
-Use Node 22+ and npm. Run from this directory:
+Use Node 22+ and npm. Install once at the root, then run the backend checks from the root:
 
 ```sh
 npm ci
@@ -26,11 +26,11 @@ npm run contracts:pack
 npm run contracts:consumer
 ```
 
-Local candidate `@learn/api-contracts@1.0.0` and companion OpenAPI, synthetic fixtures, checksums and consumer evidence are written under `artifacts/api-contracts/1.0.0`. Nothing is published to a registry by these commands. A publisher can later ship the reviewed package to a registry that supports download without access to backend source.
+Web and mobile in this repository use the workspace package directly. For other consumers, local candidate `@learn/api-contracts@1.0.0` and companion OpenAPI, synthetic fixtures, checksums and consumer evidence are written under `artifacts/api-contracts/1.0.0`. Nothing is published to a registry by these commands. A publisher can later ship the reviewed package to a registry that supports download without access to backend source.
 
 The package contains only compiled canonical DTO/Zod definitions and TypeScript declarations, with Zod as a peer. It does not contain server code, Prisma, AI prompts or source maps. The route inventory covers the real controllers; response payloads without a canonical Zod DTO are explicitly marked `not-yet-typed`. Zod refinements and authorization/quota rules remain enforced on the server. This candidate is not yet live-integration accepted.
 
-Contracts hash and min mobile version remain necessary for older installed applications. Pin artifact versions in each client's lockfile; do not replace compatibility policy with an exact hash equality requirement.
+Contracts hash and min mobile version remain necessary for older installed applications. Do not replace compatibility policy with an exact hash equality requirement.
 
 ## Isolated M1 sandbox
 

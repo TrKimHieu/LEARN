@@ -1,0 +1,57 @@
+name: backend-ci
+# Root typecheck covers every workspace, so a packages/** change also type-checks web and mobile.
+on:
+  pull_request:
+    paths: &backend-paths
+      - 'apps/api/**'
+      - 'apps/worker/**'
+      - 'apps/compute/**'
+      - 'packages/**'
+      - 'infra/**'
+      - '!infra/Dockerfile.web*'
+      - 'scripts/**'
+      - '!scripts/deploy/web-release*'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - 'eslint.config.mjs'
+      - 'vitest*.config.ts'
+      - '.prettierrc.cjs'
+      - '.github/workflows/backend-*.yml'
+  push:
+    branches-ignore: [main]
+    paths: *backend-paths
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:tooling
+      - run: npm run contracts:pack
+      - run: npm run contracts:consumer
+      - run: npm run build
+      - run: npm run sandbox:up
+      - run: npm run sandbox:compare
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: private-sandbox-diagnostics
+          path: |
+            .local/pilot-comparison.log
+            .local/sandbox.log
+          include-hidden-files: true
+          retention-days: 3
+      - if: always()
+        run: npm run sandbox:stop

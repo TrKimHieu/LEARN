@@ -2,7 +2,7 @@
   "name": "learn-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "LEARN shared API and background workers \u2014 private backend source",
+  "description": "LEARN monorepo: API, workers, web and mobile",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -14,9 +14,11 @@
     "dev": "concurrently -k -n api,worker \"npm:dev:api\" \"npm:dev:worker\"",
     "dev:api": "npm run dev -w apps/api",
     "dev:worker": "npm run dev -w apps/worker",
+    "dev:web": "npm run dev -w apps/web",
+    "dev:mobile": "npm run start -w apps/mobile",
     "build": "npm run build -w apps/api && npm run build -w apps/worker && npm run build -w apps/compute",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint . && prettier --check . --ignore-path packages/config/prettier/.prettierignore",
+    "lint": "eslint . && prettier --check . \"!apps/web/**\" \"!apps/mobile/**\" --ignore-path packages/config/prettier/.prettierignore",
     "contracts:hash": "node packages/contracts/scripts/contracts-hash.mjs",
     "test": "vitest run",
     "test:unit": "vitest run",

@@ -20,6 +20,9 @@ export default tseslint.config(
       '.prettierrc.*',
       'packages/config/**',
       'packages/contracts/scripts/**',
+      // Web và mobile có ESLint config riêng (`npm run lint -w apps/web|apps/mobile`).
+      'apps/web/**',
+      'apps/mobile/**',
     ],
   },
   eslint.configs.recommended,
