@@ -1,5 +1,7 @@
 # LEARN
 
+**LEARN – Learning Enhancement and Adaptive Resource Navigator.**
+
 Monorepo for the LEARN API, background workers, web app (`apps/web`) and mobile app (`apps/mobile`). API and worker remain separate processes. One npm workspace and one root `package-lock.json`; web and mobile import `@learn/contracts` from `packages/contracts`. See `apps/web/README.md` and `apps/mobile/README.md` for the clients, and `docs/migration/github-vars.md` for CI variables.
 
 ## Setup
