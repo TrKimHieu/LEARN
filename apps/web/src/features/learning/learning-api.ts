@@ -12,7 +12,7 @@ import type {
   ProgressCourse,
   HistoryPage,
   PatchLessonInput,
-} from '@learn/api-contracts';
+} from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 import { refreshCourseData } from '@/lib/query-refresh';
 

@@ -1,4 +1,4 @@
-import type { DueFlashcard, ReviewGrade } from '@learn/api-contracts';
+import type { DueFlashcard, ReviewGrade } from '@learn/contracts';
 
 /** Bốn Mức nhớ lấy thẳng từ contracts, không định nghĩa lại. */
 export type Grade = ReviewGrade;

@@ -1,6 +1,6 @@
 'use client';
 
-import type { FeedbackQuestion, FeedbackTopic } from '@learn/api-contracts';
+import type { FeedbackQuestion, FeedbackTopic } from '@learn/contracts';
 import { useAdminFeedback } from '@/features/admin/admin-api';
 import {
   Card,

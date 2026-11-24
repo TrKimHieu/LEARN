@@ -7,8 +7,8 @@
 const { randomUUID } = require('./uuid');
 const { LIMITS, PLANS, createState, addCourse, addDocument, addJob, tick, setProgress, getProgress, iso, DAY } = require('./state');
 
-/** Đọc từ `src/contracts/version.ts` để luôn khớp sau `npm run sync:contracts`. */
-const { CONTRACTS_HASH, importTextDocumentSchema, submitReviewSchema } = require('@learn/api-contracts');
+/** Đọc từ workspace `packages/contracts` nên luôn khớp schema hiện tại. Là TS source: chạy bằng `tsx` (`npm run mock`), Metro hoặc Jest, không chạy bằng `node` thuần. */
+const { CONTRACTS_HASH, importTextDocumentSchema, submitReviewSchema } = require('@learn/contracts');
 const MIN_MOBILE_VERSION = '1.0.0';
 const ACCESS_TTL_MS_DEFAULT = 15 * 60_000;
 

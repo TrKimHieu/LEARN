@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { registerSchema } from '@learn/api-contracts';
+import { registerSchema } from '@learn/contracts';
 import { z } from 'zod';
 import './zod-messages';
 

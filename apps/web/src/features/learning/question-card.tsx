@@ -1,6 +1,6 @@
 'use client';
 
-import type { ExerciseRead, SubmitExerciseInput } from '@learn/api-contracts';
+import type { ExerciseRead, SubmitExerciseInput } from '@learn/contracts';
 import { UserText } from '@/components/ui/user-text';
 import { Card, Icon, cn } from '@/components/ui';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SubmitExerciseInput } from '@learn/api-contracts';
+import type { SubmitExerciseInput } from '@learn/contracts';
 import {
   canCheck,
   currentQuestion,

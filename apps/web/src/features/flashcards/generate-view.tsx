@@ -3,7 +3,7 @@
 import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { generateFlashcardsSchema } from '@learn/api-contracts';
+import { generateFlashcardsSchema } from '@learn/contracts';
 import {
   BackLink,
   Button,

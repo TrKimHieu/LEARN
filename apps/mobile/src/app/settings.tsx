@@ -43,7 +43,7 @@ export default function SettingsScreen() {
         <Txt variant="caption" tone="subtle" style={{ textAlign: 'center' }}>
           Ứng dụng {APP_VERSION} · Máy chủ {config.apiUrl}
         </Txt>
-        {/* Chỉ người phát triển cần biết schema lệch — xem `npm run sync:contracts`. */}
+        {/* Chỉ người phát triển cần biết schema lệch — app và máy chủ build từ hai commit khác nhau của `packages/contracts`. */}
         {__DEV__ && contractsDiffer && meta && (
           <Txt variant="caption" tone="subtle" style={{ textAlign: 'center' }}>
             Contracts khác máy chủ ({meta.contractsHash})

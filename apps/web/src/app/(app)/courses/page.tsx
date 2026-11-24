@@ -3,7 +3,7 @@
 import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { CourseSummary } from '@learn/api-contracts';
+import type { CourseSummary } from '@learn/contracts';
 import { useCourses } from '@/features/courses/courses-api';
 import {
   Badge,

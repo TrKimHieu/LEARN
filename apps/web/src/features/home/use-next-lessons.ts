@@ -1,6 +1,6 @@
 'use client';
 
-import type { ProgressCourse } from '@learn/api-contracts';
+import type { ProgressCourse } from '@learn/contracts';
 import { useLessons } from '@/features/learning/learning-api';
 import { pickNextLesson, rankCourse, type TodayInputs } from './today-plan';
 

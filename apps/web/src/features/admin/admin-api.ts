@@ -7,8 +7,8 @@ import type {
   AdminAiJobList,
   AdminAiJobDetail,
   AuditLogEntry,
-} from '@learn/api-contracts';
-import type { AdminFeedbackSummary } from '@learn/api-contracts';
+} from '@learn/contracts';
+import type { AdminFeedbackSummary } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 
 export function useAdminMetrics() {

@@ -20,7 +20,7 @@ import type {
   PatchDeckInput,
   PatchFlashcardInput,
   SubmitFlashcardReviewInput,
-} from '@learn/api-contracts';
+} from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 
 /** Một khóa gốc `['decks']` phủ danh sách và chi tiết: đổi thẻ thì số đếm của bộ cũng đổi. */

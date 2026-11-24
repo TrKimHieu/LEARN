@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createCourseSchema, type CreateCourseInput } from '@learn/api-contracts';
+import { createCourseSchema, type CreateCourseInput } from '@learn/contracts';
 import { useCreateCourse } from '@/features/courses/courses-api';
 import { QuotaNotice } from '@/components/shared/quota-notice';
 import {

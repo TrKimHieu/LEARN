@@ -1,4 +1,4 @@
-import type { FeedbackQuestion, FeedbackTopic } from '@learn/api-contracts';
+import type { FeedbackQuestion, FeedbackTopic } from '@learn/contracts';
 
 /** Một câu hỏi trong thẻ feedback. `subjectId` gắn câu hỏi với một bài học hoặc khóa học cụ thể. */
 export interface FeedbackItem {

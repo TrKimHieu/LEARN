@@ -3,7 +3,7 @@
 import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { useState } from 'react';
-import type { LessonSummary } from '@learn/api-contracts';
+import type { LessonSummary } from '@learn/contracts';
 import { Icon } from '@/components/ui/icon';
 import { cn } from '@/components/ui/cn';
 

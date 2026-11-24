@@ -7,7 +7,7 @@ import type {
   ExerciseRead,
   SubmissionResult,
   SubmitExerciseInput,
-} from '@learn/api-contracts';
+} from '@learn/contracts';
 import { Mascot, type MascotState } from '@/components/shared/mascot';
 import { Button, EmptyState, Icon, InlineError, LoadingState, ProgressBar, cn } from '@/components/ui';
 import { UserText } from '@/components/ui/user-text';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { HistoryItem, LessonSummary } from '@learn/api-contracts';
+import type { HistoryItem, LessonSummary } from '@learn/contracts';
 import {
   buildTasks,
   isDone,

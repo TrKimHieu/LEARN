@@ -8,7 +8,7 @@ import {
   patchDeckSchema,
   type DeckSummary,
   type Flashcard,
-} from '@learn/api-contracts';
+} from '@learn/contracts';
 import {
   BackLink,
   Button,

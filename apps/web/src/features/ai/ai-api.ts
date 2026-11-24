@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AiJobSummary, GenerateLessonsInput } from '@learn/api-contracts';
+import type { AiJobSummary, GenerateLessonsInput } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 import { refreshCourseData, refreshUsage } from '@/lib/query-refresh';
 import { findActiveGenerateJob, isActiveJobStatus } from './ai-job-active';

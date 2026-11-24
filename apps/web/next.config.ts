@@ -3,6 +3,8 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   output: 'standalone',
   typedRoutes: false,
+  // `@learn/contracts` là workspace package xuất thẳng TypeScript source (`src/index.ts`).
+  transpilePackages: ['@learn/contracts'],
   // Ẩn nút "N" (Next.js dev tools) ở góc màn — chỉ có ở dev, nhưng che nội dung và lọt
   // vào mọi ảnh chụp soát giao diện.
   devIndicators: false,

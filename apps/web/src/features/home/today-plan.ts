@@ -1,4 +1,4 @@
-import type { HistoryItem, LessonSummary, ProgressCourse } from '@learn/api-contracts';
+import type { HistoryItem, LessonSummary, ProgressCourse } from '@learn/contracts';
 import { todayKey } from '../../lib/today-store';
 
 export type TodayTask =

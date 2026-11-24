@@ -1,4 +1,4 @@
-import type { DocumentStatus } from '@learn/api-contracts';
+import type { DocumentStatus } from '@learn/contracts';
 
 export const DOCUMENTS_POLL_MS = 2000;
 

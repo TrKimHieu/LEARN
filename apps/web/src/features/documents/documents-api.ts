@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { DOCUMENT_TYPES, mimeFromFilename, type UploadUrlResponse } from '@learn/api-contracts';
+import { DOCUMENT_TYPES, mimeFromFilename, type UploadUrlResponse } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 import { refreshUsage } from '@/lib/query-refresh';
 import { UploadCancelledError, putWithProgress } from './upload-transfer';

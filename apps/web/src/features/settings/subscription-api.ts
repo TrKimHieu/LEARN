@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PlanPublic, SubscriptionResponse, CheckoutUrlResponse } from '@learn/api-contracts';
+import type { PlanPublic, SubscriptionResponse, CheckoutUrlResponse } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 
 export function usePlans() {

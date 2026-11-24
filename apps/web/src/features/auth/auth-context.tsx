@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import type { RegisterInput, LoginInput, UserPublic } from '@learn/api-contracts';
+import type { RegisterInput, LoginInput, UserPublic } from '@learn/contracts';
 import { apiFetch, refreshAccessToken, setAccessToken } from '@/lib/api-client';
 
 export type AuthStatus = 'loading' | 'authed' | 'guest';

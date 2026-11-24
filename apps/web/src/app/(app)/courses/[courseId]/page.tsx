@@ -5,7 +5,7 @@ import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { DOCUMENT_ACCEPT, type DocumentList } from '@learn/api-contracts';
+import { DOCUMENT_ACCEPT, type DocumentList } from '@learn/contracts';
 import { useCourse, useCourseDocuments, useDeleteCourse } from '@/features/courses/courses-api';
 import {
   useDeleteDocument,

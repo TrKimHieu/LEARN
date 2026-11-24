@@ -2,8 +2,8 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
-import { acceptFlashcardDraftsSchema, createFlashcardSchema } from '@learn/api-contracts';
-import type { FlashcardDraft } from '@learn/api-contracts';
+import { acceptFlashcardDraftsSchema, createFlashcardSchema } from '@learn/contracts';
+import type { FlashcardDraft } from '@learn/contracts';
 import {
   BackLink,
   Button,

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { notFound } from 'next/navigation';
-import type { AiCostMetrics, LessonSummary } from '@learn/api-contracts';
+import type { AiCostMetrics, LessonSummary } from '@learn/contracts';
 import {
   Badge,
   Button,

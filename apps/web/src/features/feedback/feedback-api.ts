@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import type { SubmitFeedbackInput } from '@learn/api-contracts';
+import type { SubmitFeedbackInput } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 
 export function useSubmitFeedback() {

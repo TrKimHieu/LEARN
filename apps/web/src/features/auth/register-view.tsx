@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { registerSchema } from '@learn/api-contracts';
+import { registerSchema } from '@learn/contracts';
 import { useAuth } from '@/features/auth/auth-context';
 import { Button, Field, Icon, InlineError, Input, PasswordInput } from '@/components/ui';
 import { errorText } from '@/lib/api-client';

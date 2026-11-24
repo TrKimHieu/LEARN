@@ -3,7 +3,7 @@
 import { UserText } from '@/components/ui/user-text';
 import Link from 'next/link';
 import { useId, useState } from 'react';
-import type { LessonSource } from '@learn/api-contracts';
+import type { LessonSource } from '@learn/contracts';
 import { Button, Icon, InlineError, LoadingState, cn } from '@/components/ui';
 import { errorText } from '@/lib/api-client';
 import { useLessonSources } from './learning-api';

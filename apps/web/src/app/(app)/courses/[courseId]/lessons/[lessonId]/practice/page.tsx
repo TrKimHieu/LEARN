@@ -5,7 +5,7 @@ import type { FeedbackItem } from '@/features/feedback/feedback-policy';
 import { UserText } from '@/components/ui/user-text';
 import { use, useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn/api-contracts';
+import type { ExerciseRead, SubmissionResult, SubmitExerciseInput } from '@learn/contracts';
 import { useExercise, useLessons, useSubmitExercise } from '@/features/learning/learning-api';
 import { LessonSplit } from '@/features/learning/lesson-split';
 import { useCourse } from '@/features/courses/courses-api';

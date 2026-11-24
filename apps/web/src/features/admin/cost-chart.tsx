@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { AiCostMetrics } from '@learn/api-contracts';
+import type { AiCostMetrics } from '@learn/contracts';
 import { cn } from '@/components/ui/cn';
 
 /**

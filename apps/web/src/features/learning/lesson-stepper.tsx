@@ -1,6 +1,6 @@
 'use client';
 
-import type { ExerciseRead } from '@learn/api-contracts';
+import type { ExerciseRead } from '@learn/contracts';
 import { useEffect, useMemo, useRef } from 'react';
 import { renderMarkdown } from '@/components/shared/markdown';
 import { Button, ButtonLink, Icon, ProgressBar } from '@/components/ui';

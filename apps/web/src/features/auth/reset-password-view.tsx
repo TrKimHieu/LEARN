@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
-import { resetPasswordSchema } from '@learn/api-contracts';
+import { resetPasswordSchema } from '@learn/contracts';
 import {
   Button,
   ButtonLink,

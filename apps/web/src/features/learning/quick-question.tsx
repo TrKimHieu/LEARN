@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { CheckResult, ExerciseRead, SubmitExerciseInput } from '@learn/api-contracts';
+import type { CheckResult, ExerciseRead, SubmitExerciseInput } from '@learn/contracts';
 import { Mascot } from '@/components/shared/mascot';
 import { Button, Icon, InlineError, cn } from '@/components/ui';
 import { UserText } from '@/components/ui/user-text';

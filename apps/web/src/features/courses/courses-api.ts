@@ -4,7 +4,7 @@ import type {
   CourseSummary,
   CreateCourseInput,
   DocumentList,
-} from '@learn/api-contracts';
+} from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 import { refreshCourseData, refreshUsage } from '@/lib/query-refresh';
 import { documentsRefetchInterval } from './document-polling';

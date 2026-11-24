@@ -1,4 +1,4 @@
-import type { DeckSummary } from '@learn/api-contracts';
+import type { DeckSummary } from '@learn/contracts';
 
 type Counts = Pick<DeckSummary, 'cardCount' | 'newCount' | 'learningCount' | 'dueCount'>;
 

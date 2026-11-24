@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
-import type { SubmitFeedbackInput } from '@learn/api-contracts';
+import type { SubmitFeedbackInput } from '@learn/contracts';
 import { Button, InlineError, Textarea, cn } from '@/components/ui';
 import { errorText } from '@/lib/api-client';
 import { useSubmitFeedback } from './feedback-api';

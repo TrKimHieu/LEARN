@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
-import { forgotPasswordSchema } from '@learn/api-contracts';
+import { forgotPasswordSchema } from '@learn/contracts';
 import { Button, Field, Icon, InlineError, Input } from '@/components/ui';
 import { apiFetch, errorText } from '@/lib/api-client';
 import { AuthHeading } from './auth-heading';

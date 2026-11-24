@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { createDeckSchema, type DeckSummary } from '@learn/api-contracts';
+import { createDeckSchema, type DeckSummary } from '@learn/contracts';
 import {
   Button,
   ButtonLink,
