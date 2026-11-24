@@ -7,7 +7,7 @@ function service(opts: {
   existing?: { status: string; requesterId: string };
 }) {
   const tx = {
-    $queryRaw: vi.fn(async () => []),
+    $executeRaw: vi.fn(async () => 1),
     friendship: {
       findFirst: vi.fn(async () => (opts.existing ? { id: 'f1', ...opts.existing } : null)),
       count: vi.fn(async () => 0),

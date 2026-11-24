@@ -241,7 +241,7 @@ export class FriendsService {
   /** Khoá theo cặp người để hai lời mời ngược chiều cùng lúc không tạo hai dòng. */
   private async lockPair(tx: Prisma.TransactionClient, a: string, b: string) {
     const key = a < b ? `friend:${a}:${b}` : `friend:${b}:${a}`;
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
   }
 
   private async assertRoom(tx: Prisma.TransactionClient, userId: string) {
