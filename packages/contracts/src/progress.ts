@@ -10,6 +10,12 @@ export const progressOverviewSchema = z.object({
   activeStreak: z.number().int().default(0),
   /** Ngày học gần nhất (YYYY-MM-DD, giờ APP_TIMEZONE): có nộp bài hoặc ôn thẻ/câu hỏi. */
   lastStudyDay: z.string().nullable().default(null),
+  /** XP do server tính (spec 2026-11-20). Tuần bắt đầu thứ Hai theo APP_TIMEZONE. */
+  xpToday: z.number().int().default(0),
+  xpThisWeek: z.number().int().default(0),
+  xpTotal: z.number().int().default(0),
+  /** Trần XP mỗi ngày; vượt trần thì tiến độ vẫn lưu, không cộng XP. */
+  dailyXpCap: z.number().int().default(100),
 });
 
 export const progressCourseSchema = z.object({

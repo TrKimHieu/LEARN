@@ -11,6 +11,8 @@ import { CourseRepository } from '../../courses/infrastructure/repositories/cour
 import { LessonRepository } from '../infrastructure/repositories/lesson.repository';
 import { LearningProgressRepository } from '../infrastructure/repositories/learning-progress.repository';
 import { SubmissionRepository } from '../infrastructure/repositories/submission.repository';
+import { XpService } from '../../gamification/application/xp.service';
+import { localDayKey, previousDayKey, utcDayKey } from '../../../core/day-key';
 
 /**
  * Chuỗi ngày học liên tiếp chỉ cần nhìn lại tối đa ngần này ngày. Chuỗi dài hơn 1 năm
@@ -27,10 +29,11 @@ export class ProgressService {
     private readonly lessons: LessonRepository,
     private readonly progress: LearningProgressRepository,
     private readonly submissions: SubmissionRepository,
+    private readonly xp: XpService,
   ) {}
 
   async overview(userId: string): Promise<ProgressOverview> {
-    const [courseCount, totalLessons, completedLessons, scores, study] = await Promise.all([
+    const [courseCount, totalLessons, completedLessons, scores, study, xp] = await Promise.all([
       this.courses.countOwned(userId),
       this.lessons.countForOwner(userId),
       this.progress.countCompleted(userId),
@@ -39,6 +42,7 @@ export class ProgressService {
       // người dùng về Node chỉ để cộng lại — không giới hạn, lớn dần mãi theo thời gian dùng.
       this.submissions.averageForUser(userId),
       this.studyDays(userId),
+      this.xp.summary(userId),
     ]);
 
     return {
@@ -48,6 +52,7 @@ export class ProgressService {
       averageScore: scores._avg.score == null ? null : Math.round(scores._avg.score * 10) / 10,
       activeStreak: study.streak,
       lastStudyDay: study.lastStudyDay,
+      ...xp,
     };
   }
 
@@ -163,28 +168,5 @@ export class ProgressService {
   }
 }
 
-/** Ngày lịch của `d` tại `timeZone`, dạng `YYYY-MM-DD`. `en-CA` cho sẵn đúng định dạng đó. */
-export function localDayKey(d: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(d);
-}
-
-/** Đọc ngày từ một Date mà các thành phần UTC của nó đã là ngày địa phương. */
-export function utcDayKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-}
-
-/**
- * Lùi một ngày lịch. Làm trên chuỗi `YYYY-MM-DD` qua `Date.UTC` nên không dính giờ mùa hè:
- * ở múi giờ có DST, "24 tiếng trước" có thể vẫn là cùng ngày hoặc nhảy hai ngày.
- */
-export function previousDayKey(key: string): string {
-  const [y, m, d] = key.split('-').map(Number);
-  const prev = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1));
-  prev.setUTCDate(prev.getUTCDate() - 1);
-  return utcDayKey(prev);
-}
+// Giữ đường import cũ (test, integration) sau khi tách hàm ngày sang `core/day-key.ts`.
+export { localDayKey, previousDayKey, utcDayKey } from '../../../core/day-key';

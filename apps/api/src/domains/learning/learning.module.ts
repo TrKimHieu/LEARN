@@ -1,3 +1,4 @@
+import { GamificationModule } from '../gamification/gamification.module';
 import { Module } from '@nestjs/common';
 import { LearningController } from './presentation/learning.controller';
 import { LessonsService } from './application/lessons.service';
@@ -10,7 +11,7 @@ import { SubmissionRepository } from './infrastructure/repositories/submission.r
 import { CoursesModule } from '../../domains/courses/courses.module';
 
 @Module({
-  imports: [CoursesModule],
+  imports: [CoursesModule, GamificationModule],
   controllers: [LearningController],
   providers: [
     LessonsService,

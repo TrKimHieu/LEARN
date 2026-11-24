@@ -110,6 +110,7 @@ function setup() {
     } as never,
     submissions as never,
     { upsertAfterSubmission: vi.fn(async () => undefined) } as never,
+    { award: vi.fn(async () => 15) } as never,
   );
   const input = {
     exerciseId: 'e1',
