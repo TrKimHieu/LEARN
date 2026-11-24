@@ -17,8 +17,8 @@ Quy trình P-5 (2026-11-16). Mục tiêu: lockfile không xung đột giữa cá
 1. `git checkout -b chore/deps-<tên-đợt>` từ `main` mới nhất.
 2. `npx expo install <gói…>` (hoặc `npm install` cho JS thuần).
 3. `npx expo install --check` và `npm run doctor`: không còn cảnh báo lệch phiên bản.
-4. `npm run sync:contracts`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:tooling`, `npm run export`.
-5. Commit `package.json` + `package-lock.json`, mở PR, merge trước khi bắt đầu code dùng gói.
+4. `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:tooling`, `npm run export`.
+5. Commit `package.json` + `package-lock.json` ở root, mở PR, merge trước khi bắt đầu code dùng gói.
 
 ## Mạng chập chờn
 

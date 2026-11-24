@@ -1,12 +1,12 @@
 # LEARN mobile
 
-Standalone private mobile repository. Public contracts 1.0.0 are pinned in vendor/ with SHA-256. No backend or other client checkout is required.
+Expo app in the LEARN monorepo. API types and schemas come from the workspace package `@learn/contracts` (`packages/contracts`).
 
-Setup: npm ci, npm run lint, npm run typecheck, npm test, npm run export. Adding dependencies: see [docs/dependencies.md](docs/dependencies.md).
+Setup: `npm ci` at the repository root, then in this directory: npm run lint, npm run typecheck, npm test, npm run export. Adding dependencies: see [docs/dependencies.md](docs/dependencies.md).
 
 Copy .env.example to .env and set an explicit EXPO_PUBLIC_API_URL origin. Set APP_ENV to development, preview or production. Preview and production require remote HTTPS; API paths already include /api/v1. The example API is a build placeholder. No Metro/LAN origin is inferred.
 
-Run `npm run sync:contracts` before installation and `npm run test:tooling` alongside the checks above. To restore the pinned artifact from a released file: `npm run sync:contracts -- --source /path/to/released.tgz`. Hash and package identity must match the trusted pin. Run typecheck and mock tests after every contract update.
+Run `npm run test:tooling` alongside the checks above, and typecheck plus mock tests after every contract change. `npm run mock` runs under `tsx` because the mock API loads contracts as TypeScript source. EAS builds from this directory upload the whole repository and install from the root lockfile.
 
 New original-file imports are temporarily locked while the on-device text-only pipeline is prepared. Existing documents and lessons remain readable.
 

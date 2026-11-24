@@ -6,12 +6,15 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY apps/compute/package.json apps/compute/package.json
+# Web và mobile chỉ cần manifest để npm ci đọc được lockfile chung; không cài dependency của chúng.
+COPY apps/web/package.json apps/web/package.json
+COPY apps/mobile/package.json apps/mobile/package.json
 COPY packages/ai/package.json packages/ai/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY packages/db/prisma packages/db/prisma
-RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --no-audit --no-fund
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts --no-audit --no-fund --include-workspace-root \n  -w apps/api -w apps/worker -w apps/compute -w packages/ai -w packages/config -w packages/contracts -w packages/db
 COPY . .
 RUN npm run db:generate
 RUN npm run build -w apps/api
@@ -23,6 +26,8 @@ COPY --from=builder /app/package.json /app/package-lock.json ./
 COPY --from=builder /app/apps/api/package.json apps/api/package.json
 COPY --from=builder /app/apps/worker/package.json apps/worker/package.json
 COPY --from=builder /app/apps/compute/package.json apps/compute/package.json
+COPY --from=builder /app/apps/web/package.json apps/web/package.json
+COPY --from=builder /app/apps/mobile/package.json apps/mobile/package.json
 COPY --from=builder /app/packages/ai/package.json packages/ai/package.json
 COPY --from=builder /app/packages/config/package.json packages/config/package.json
 COPY --from=builder /app/packages/contracts/package.json packages/contracts/package.json

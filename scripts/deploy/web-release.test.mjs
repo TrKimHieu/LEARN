@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deploymentPlan, isTargetHost } from './release.mjs';
+import { deploymentPlan, isTargetHost } from './web-release.mjs';
 
 const image = `123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/learn/api@sha256:${'a'.repeat(64)}`;
 const input = {

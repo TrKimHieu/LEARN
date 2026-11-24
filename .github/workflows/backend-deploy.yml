@@ -1,5 +1,5 @@
-name: deploy
-# Called by release.yml after a build. Run it by hand with an older digest to roll back.
+name: backend-deploy
+# Called by backend-release.yml after a build. Run it by hand with an older digest to roll back.
 on:
   workflow_call:
     inputs:

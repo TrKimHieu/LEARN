@@ -1,14 +1,26 @@
-name: release
+name: backend-release
 # Merge to main: test, build images once, deploy to staging, then promote the same digests to
 # production after approval. Production stays off until PRODUCTION_ENABLED is 'true'.
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'apps/worker/**'
+      - 'apps/compute/**'
+      - 'packages/**'
+      - 'infra/**'
+      - '!infra/Dockerfile.web*'
+      - 'scripts/**'
+      - '!scripts/deploy/web-release*'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/backend-*.yml'
 permissions:
   contents: read
 jobs:
   verify:
-    uses: ./.github/workflows/ci.yml
+    uses: ./.github/workflows/backend-ci.yml
 
   images:
     needs: verify
@@ -90,7 +102,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/backend-deploy.yml
     with:
       environment: staging
       api_image: ${{ needs.images.outputs.api }}
@@ -105,7 +117,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/backend-deploy.yml
     with:
       environment: production
       api_image: ${{ needs.images.outputs.api }}

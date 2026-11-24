@@ -1,14 +1,21 @@
-name: release
+name: web-release
 # Merge to main: test, build the image once, deploy to staging, then promote the same digest to
 # production after approval. Production stays off until PRODUCTION_ENABLED is 'true'.
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/contracts/**'
+      - 'package-lock.json'
+      - 'infra/Dockerfile.web*'
+      - 'scripts/deploy/web-release*'
+      - '.github/workflows/web-*.yml'
 permissions:
   contents: read
 jobs:
   verify:
-    uses: ./.github/workflows/ci.yml
+    uses: ./.github/workflows/web-ci.yml
 
   image:
     needs: verify
@@ -24,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_BUILD_ROLE_ARN }}
+          role-to-assume: ${{ vars.WEB_AWS_BUILD_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           mask-aws-account-id: false
       - uses: aws-actions/amazon-ecr-login@v2
@@ -45,7 +52,7 @@ jobs:
         if: steps.existing.outputs.web == ''
         with:
           context: .
-          file: Dockerfile
+          file: infra/Dockerfile.web
           push: true
           tags: ${{ env.REGISTRY }}/learn/web:${{ github.sha }}
           cache-from: type=gha,scope=web
@@ -56,7 +63,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/web-deploy.yml
     with:
       environment: staging
       web_image: ${{ needs.image.outputs.web }}
@@ -68,7 +75,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/web-deploy.yml
     with:
       environment: production
       web_image: ${{ needs.image.outputs.web }}

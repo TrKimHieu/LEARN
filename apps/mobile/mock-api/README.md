@@ -94,8 +94,8 @@ Quên mật khẩu: mock **in đường dẫn đặt lại** (`learn://reset-pas
 
 - `npm test` chạy `mock-api/__tests__/mock-api.test.ts`: khởi động mock và kiểm **mọi response** bằng
   Zod schema trong `src/contracts/`. Contracts đổi mà mock lệch thì test đỏ.
-- Dấu vân tay contracts (`/api/v1/meta`) được đọc từ `src/contracts/version.ts`, nên tự khớp sau
-  `npm run sync:contracts`.
+- Dấu vân tay contracts (`/api/v1/meta`) được đọc từ workspace `@learn/contracts`, nên luôn
+  khớp schema hiện tại. Vì contracts là TypeScript source, `npm run mock` chạy bằng `tsx`.
 - Thêm endpoint mới vào app thì thêm route vào `app.js` rồi thêm một ca vào test.
 - `npm run e2e` chạy được trên mock: `npm run mock` + `npm run web` + `npm run e2e`.
 

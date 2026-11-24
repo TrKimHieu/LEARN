@@ -1,4 +1,6 @@
 name: Check AWS access
+# Manual check that each OIDC role trusts this repository. Backend roles use the unprefixed
+# variables; web roles use WEB_*. Each job prints the OIDC subject to copy into the trust policy.
 
 on:
   workflow_dispatch:
@@ -8,21 +10,52 @@ permissions:
   id-token: write
 
 jobs:
-  build-role:
+  backend-build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/github-script@v7
+        with: &show-claims
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com');
+            const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+            core.info(JSON.stringify({ sub: claims.sub, aud: claims.aud }));
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_BUILD_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
       - run: aws sts get-caller-identity
 
-  staging-role:
+  backend-staging:
     runs-on: ubuntu-latest
     environment: staging
     steps:
+      - uses: actions/github-script@v7
+        with: *show-claims
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: aws sts get-caller-identity
+
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with: *show-claims
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.WEB_AWS_BUILD_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: aws sts get-caller-identity
+
+  web-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/github-script@v7
+        with: *show-claims
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.WEB_AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
       - run: aws sts get-caller-identity
