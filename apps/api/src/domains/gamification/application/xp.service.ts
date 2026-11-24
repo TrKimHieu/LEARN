@@ -35,7 +35,7 @@ export class XpService {
     now = new Date(),
   ): Promise<number> {
     const day = localDayKey(now, env.APP_TIMEZONE);
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'xp:' + input.userId}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'xp:' + input.userId}))`;
     const today = await tx.xpEvent.aggregate({
       where: { userId: input.userId, day },
       _sum: { amount: true },
