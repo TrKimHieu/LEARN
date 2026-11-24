@@ -2,4 +2,4 @@
  * Dấu vân tay nội dung contracts — SINH bởi `scripts/contracts-hash.mjs`, không sửa tay.
  * Đổi bất kỳ file nào trong `src/` thì chạy lại script (test `version.test.ts` sẽ nhắc).
  */
-export const CONTRACTS_HASH = '575432c4058f';
+export const CONTRACTS_HASH = '252c2d7489b5';

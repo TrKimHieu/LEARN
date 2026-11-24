@@ -122,6 +122,7 @@ function setup(submitted: Record<string, boolean | null> = { q1: false, q2: true
   const service = new ReviewsService(
     { client: { $transaction: async (fn: (tx: unknown) => unknown) => fn({}) } } as never,
     repo as never,
+    { award: vi.fn(async () => 1) } as never,
   );
   return { service, repo, schedules, reviews };
 }
