@@ -12,9 +12,6 @@ coverage
 docs/migration
 **/.next
 **/.expo
-# Image backend chỉ cần manifest của web/mobile (để đọc lockfile chung).
-# infra/Dockerfile.web.dockerignore thay file này khi build image web.
-apps/web/*
-!apps/web/package.json
-apps/mobile/*
-!apps/mobile/package.json
+# Image backend không cần web/mobile. infra/Dockerfile.web.dockerignore thay file này khi build image web.
+apps/web
+apps/mobile
