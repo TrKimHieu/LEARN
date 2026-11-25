@@ -17,13 +17,13 @@ import {
 } from '@/components/ui';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { moodFor } from './mood';
-import { isDone, taskHref, type TodayTask } from './today-plan';
+import { buildContinue, isDone, taskHref, type ContinueItem, type TodayTask } from './today-plan';
 import { useTodayPlan } from './use-today-plan';
 
 /** Màn Học (spec 4.2): mascot, chuỗi ngày, vòng mục tiêu ngày và 2–4 việc hôm nay. */
 export function TodayView() {
   const router = useRouter();
-  const { gate, failed, retry, plan, day, overview, liveDue, previousSeen, studying } =
+  const { gate, failed, retry, plan, day, overview, liveDue, previousSeen, studying, nextLessons, history } =
     useTodayPlan();
   const lastStudyDay = overview.data?.lastStudyDay ?? null;
 
@@ -105,9 +105,7 @@ export function TodayView() {
         )}
       </div>
 
-      {total === 0 ? (
-        <p className="mt-6 text-sm text-fg-muted">Hôm nay không còn việc nào.</p>
-      ) : (
+      {total > 0 && (
         <Card padded={false} className="mt-6">
           <ul className="divide-y divide-line">
             {plan.tasks.map((task) => (
@@ -117,6 +115,10 @@ export function TodayView() {
             ))}
           </ul>
         </Card>
+      )}
+
+      {(total === 0 || allDone) && (
+        <ContinueCard items={buildContinue({ nextLessons, history }, plan.tasks)} />
       )}
 
       <p className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-fg-subtle">
@@ -196,5 +198,42 @@ function TaskRow({ task, done }: { task: TodayTask; done: boolean }) {
         </ButtonLink>
       )}
     </div>
+  );
+}
+
+function continueView(item: ContinueItem): { icon: IconName; title: React.ReactNode; href: string } {
+  if (item.kind === 'generate') return { icon: 'sparkles', title: 'Tạo thẻ bằng AI', href: '/decks/generate' };
+  const v = taskView(item);
+  return { icon: v.icon, title: v.title, href: v.href };
+}
+
+/** Khi xong hết việc hôm nay: một gợi ý chính và vài lựa chọn phụ. */
+function ContinueCard({ items }: { items: ContinueItem[] }) {
+  const [main, ...rest] = items.map((item) => ({ id: item.id, ...continueView(item) }));
+  if (!main) return null;
+  return (
+    <section aria-labelledby="continue-title" className="mt-6">
+      <h3 id="continue-title" className="text-sm font-semibold text-fg-muted">
+        Làm tiếp
+      </h3>
+      <Card className="mt-2 flex items-center gap-3">
+        <Icon name={main.icon} size={20} className="shrink-0 text-fg-muted" />
+        <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium text-fg">{main.title}</p>
+        <ButtonLink href={main.href} size="sm">
+          Bắt đầu
+        </ButtonLink>
+      </Card>
+      {rest.length > 0 && (
+        <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+          {rest.map((r) => (
+            <li key={r.id}>
+              <ButtonLink href={r.href} variant="link" size="sm">
+                {r.title}
+              </ButtonLink>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

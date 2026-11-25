@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Mascot } from '@/components/mascot';
@@ -12,7 +12,7 @@ import { routes } from '@/lib/routes';
 import { usePalette } from '@/theme/theme';
 import { space } from '@/theme/tokens';
 import { moodFor } from '../mood';
-import { isDone, taskHref, type TodayTask } from '../today-plan';
+import { buildContinue, isDone, taskHref, type ContinueItem, type TodayTask } from '../today-plan';
 import { useTodayPlan } from '../use-today-plan';
 
 /** Màn Học (spec web 4.2): mở ra là biết hôm nay học gì, bắt đầu bằng một lần chạm. */
@@ -120,9 +120,7 @@ export function TodayView() {
       </View>
 
       <Txt variant="heading">Hôm nay</Txt>
-      {total === 0 ? (
-        <Txt variant="small" tone="subtle">Hôm nay không còn việc nào.</Txt>
-      ) : (
+      {total > 0 && (
         <Card padded={false}>
           {plan.tasks.map((task, i) => (
             <View key={task.id}>
@@ -131,6 +129,10 @@ export function TodayView() {
             </View>
           ))}
         </Card>
+      )}
+
+      {(total === 0 || doneCount === total) && (
+        <ContinueCard items={buildContinue({ nextLessons: t.nextLessons, history: t.history }, plan.tasks)} />
       )}
 
       <View style={styles.links}>
@@ -190,6 +192,38 @@ function TaskRow({ task, done, questionsDue }: { task: TodayTask; done: boolean;
           variant={task.kind === 'exercise' ? 'secondary' : 'primary'}
           onPress={open}
         />
+      )}
+    </View>
+  );
+}
+
+function continueView(item: ContinueItem): { icon: IconName; title: string; href: Href } {
+  if (item.kind === 'generate') return { icon: 'sparkles', title: 'Tạo thẻ bằng AI', href: routes.generateCards };
+  const v = taskView(item);
+  return { icon: v.icon, title: v.title, href: taskHref(item) };
+}
+
+/** Khi xong hết việc hôm nay: một gợi ý chính và vài lựa chọn phụ. */
+function ContinueCard({ items }: { items: ContinueItem[] }) {
+  const p = usePalette();
+  const [main, ...rest] = items.map((item) => ({ id: item.id, ...continueView(item) }));
+  if (!main) return null;
+  return (
+    <View style={{ gap: space.sm }}>
+      <Txt variant="heading">Làm tiếp</Txt>
+      <Card padded={false}>
+        <View style={styles.row}>
+          <Icon name={main.icon} size={22} color={p.fgMuted} />
+          <Txt variant="smallStrong" numberOfLines={2} style={{ flex: 1 }}>{main.title}</Txt>
+          <Button label="Bắt đầu" accessibilityLabel={`Bắt đầu: ${main.title}`} size="sm" onPress={() => router.push(main.href)} />
+        </View>
+      </Card>
+      {rest.length > 0 && (
+        <View style={styles.links}>
+          {rest.map((r) => (
+            <Button key={r.id} label={r.title} icon={r.icon} variant="ghost" size="sm" onPress={() => router.push(r.href)} />
+          ))}
+        </View>
       )}
     </View>
   );
