@@ -127,14 +127,25 @@ export class AuthController {
     return this.auth.patchMe(user.userId, body);
   }
 
+  /** Trả phiên mới (cùng dạng `login`): mọi phiên cũ đã bị thu hồi, máy này vẫn đăng nhập. */
   @Post('change-password')
   @Auth()
+  @UseGuards(RateLimitGuard)
+  @Throttle(5, 60)
   async changePassword(
     @CurrentUser() user: UserContext,
     @Body(zodBody(changePasswordSchema)) body: ChangePasswordInput,
+    @Req() req: Request,
+    @Res() res: Response,
   ) {
-    await this.auth.changePassword(user.userId, body.currentPassword, body.newPassword);
-    return { ok: true };
+    const result = await this.auth.changePassword(
+      user.userId,
+      body.currentPassword,
+      body.newPassword,
+      req.headers['user-agent'] ?? undefined,
+      req.ip,
+    );
+    return sendSession(req, res.status(HttpStatus.OK), result);
   }
 }
 
