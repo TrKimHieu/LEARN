@@ -1,6 +1,6 @@
 # Thay đổi khi gộp monorepo và việc còn lại để deploy
 
-Tình trạng ghi ngày 2026-11-25. File này dành cho agent hướng dẫn người dùng deploy lần đầu sau khi gộp repo. Đọc file này cùng [`github-vars.md`](github-vars.md), [`infra/aws/README.md`](../../infra/aws/README.md) và các workflow trong `.github/workflows/`. Khi file này và code khác nhau, tin code.
+Tình trạng ghi ngày 2026-11-25. File này dành cho agent hướng dẫn người dùng deploy lần đầu sau khi gộp repo. Đọc file này cùng [`aws-github-cutover.md`](aws-github-cutover.md) (hướng dẫn từng bước trên AWS và GitHub), [`github-vars.md`](github-vars.md), [`infra/aws/README.md`](../../infra/aws/README.md) và các workflow trong `.github/workflows/`. Khi file này và code khác nhau, tin code.
 
 Vai trò của agent: hướng dẫn từng bước và kiểm tra kết quả. Người dùng tự làm mọi thao tác trên AWS Console/IAM và GitHub Settings. Staging được tắt để tiết kiệm chi phí. Chỉ bật lại khi người dùng sẵn sàng nghiệm thu, và nhắc người dùng tắt lại khi xong.
 
@@ -50,9 +50,7 @@ Muốn xem prefix thực tế, chạy `gh api repos/TrKimHieu/LEARN/actions/oidc
 
 Làm theo thứ tự. Mỗi bước có điều kiện xong. Chỉ sang bước sau khi điều kiện đó đúng.
 
-1. **Sửa trust của cả ba role.** Trong IAM, sửa điều kiện `token.actions.githubusercontent.com:sub` của trust policy:
-   - `learn-github-build-backend` và `learn-github-build-web` dùng subject build ở trên. Bỏ subject của `LEARN_backend` và `LEARN_website`.
-   - `learn-github-deploy-staging` dùng subject deploy ở trên. Bỏ subject cũ của `LEARN_backend`.
+1. **Sửa trust của cả ba role.** Làm theo bước 1–2 của [`aws-github-cutover.md`](aws-github-cutover.md), file này có lệnh CloudShell và JSON đầy đủ.
    - Xong khi: cả ba trust policy chỉ còn subject có `LEARN@1443929163`.
 2. **Chạy `aws-check`.** Chạy từ tab Actions hoặc bằng `gh workflow run aws-check.yml -R TrKimHieu/LEARN`.
    - Xong khi: cả 4 job xanh (`backend-build`, `backend-staging`, `web-build`, `web-staging`).
