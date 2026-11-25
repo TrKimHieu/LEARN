@@ -27,6 +27,12 @@ export class ReviewsController {
     return this.reviews.due(user.userId, query.limit);
   }
 
+  @Get('queue')
+  @Auth()
+  queue(@CurrentUser() user: UserContext) {
+    return this.reviews.queue(user.userId);
+  }
+
   @Post(':questionId')
   @Auth()
   review(

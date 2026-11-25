@@ -4,9 +4,13 @@ import type { Prisma } from '@learn/db';
 import type {
   DueReviewsResponse,
   ReviewCard,
+  ReviewQueueItem,
+  ReviewQueueResponse,
   ReviewResult,
   SubmitReviewInput,
 } from '@learn/contracts';
+import { REVIEW_QUEUE_LIMIT } from '@learn/contracts';
+import { FlashcardsService } from '../../flashcards/application/flashcards.service';
 import { ApiError } from '../../../core/exceptions/errors';
 import { PrismaService } from '../../../infra/services';
 import { idempotencyKeyReused, isIdempotencyKeyViolation } from '../../../core/srs/idempotency';
@@ -56,7 +60,44 @@ export class ReviewsService {
     private readonly prisma: PrismaService,
     private readonly reviews: ReviewRepository,
     private readonly xp: XpService,
+    private readonly flashcards: FlashcardsService,
   ) {}
+
+  /** Hàng đợi "Ôn tập": câu hỏi + flashcard đến hạn, trộn theo `dueAt` (hoà thì câu hỏi trước, rồi id). */
+  async queue(userId: string): Promise<ReviewQueueResponse> {
+    const [q, f, decks] = await Promise.all([
+      this.due(userId, REVIEW_QUEUE_LIMIT),
+      this.flashcards.dueCards(userId, null, REVIEW_QUEUE_LIMIT),
+      this.flashcards.listDecks(userId),
+    ]);
+    const deckTitle = new Map(decks.decks.map((d) => [d.id, d.title]));
+    const items: ReviewQueueItem[] = [
+      ...q.cards.map((c) => ({ kind: 'question' as const, ...c })),
+      ...f.cards.map((c) => ({
+        kind: 'flashcard' as const,
+        id: c.id,
+        deckId: c.deckId,
+        deckTitle: deckTitle.get(c.deckId) ?? '',
+        front: c.front,
+        back: c.back,
+        dueAt: c.dueAt,
+      })),
+    ];
+    const idOf = (i: ReviewQueueItem) => (i.kind === 'question' ? i.questionId : i.id);
+    items.sort(
+      (a, b) =>
+        a.dueAt.localeCompare(b.dueAt) ||
+        (a.kind === b.kind ? 0 : a.kind === 'question' ? -1 : 1) ||
+        idOf(a).localeCompare(idOf(b)),
+    );
+    const nextDueAt =
+      [q.nextDueAt, f.nextDueAt].filter((x): x is string => x !== null).sort()[0] ?? null;
+    return {
+      items: items.slice(0, REVIEW_QUEUE_LIMIT),
+      dueCount: q.dueCount + f.dueCount,
+      nextDueAt,
+    };
+  }
 
   /** Sinh lịch cho câu hỏi đã nộp mà chưa có thẻ, rồi trả các thẻ đến hạn (gần hạn nhất trước). */
   async due(userId: string, limit: number): Promise<DueReviewsResponse> {

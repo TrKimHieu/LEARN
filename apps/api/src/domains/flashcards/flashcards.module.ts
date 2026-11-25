@@ -8,5 +8,6 @@ import { FlashcardRepository } from './infrastructure/flashcard.repository';
   imports: [GamificationModule],
   controllers: [FlashcardsController],
   providers: [FlashcardsService, FlashcardRepository],
+  exports: [FlashcardsService],
 })
 export class FlashcardsModule {}
