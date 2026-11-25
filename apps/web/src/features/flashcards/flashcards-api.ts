@@ -140,11 +140,12 @@ export function useReviewQueue(enabled = true) {
   });
 }
 
-/** Số thẻ đến hạn của hàng đợi "Ôn tập" (cùng con số với mobile); làm tươi mỗi phút và khi quay lại tab. */
+/** Số thẻ đến hạn của mọi bộ cho điều hướng và dashboard; làm tươi mỗi phút và khi quay lại tab. */
 export function useDueCount() {
   return useQuery({
     queryKey: DUE_COUNT_KEY,
-    queryFn: () => apiFetch<ReviewQueueResponse>('/api/v1/reviews/queue'),
+    // Không dùng /reviews/queue: poll mỗi phút sẽ sinh lịch câu hỏi và tải cả 20 thẻ chỉ để lấy một số.
+    queryFn: () => apiFetch<DueFlashcardsResponse>('/api/v1/flashcards/due?limit=1'),
     select: (d) => d.dueCount,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,

@@ -37,6 +37,8 @@ export interface PendingGrade {
   grade: Grade;
   reviewedAt: string;
   key: string;
+  /** Loại thẻ lúc chấm (hàng đợi chung): id câu hỏi và id thẻ có thể trùng nhau. */
+  kind?: SessionCard['kind'];
 }
 
 export interface SessionState {
@@ -91,7 +93,13 @@ export function choose(
   if (!card || !state.revealed || state.pending) return state;
   return {
     ...state,
-    pending: { cardId: card.id, grade, reviewedAt: now.toISOString(), key: newKey() },
+    pending: {
+      cardId: card.id,
+      grade,
+      reviewedAt: now.toISOString(),
+      key: newKey(),
+      ...(card.kind ? { kind: card.kind } : {}),
+    },
   };
 }
 

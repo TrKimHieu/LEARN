@@ -180,7 +180,7 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
     submit.mutate(
       {
         cardId: pending.cardId,
-        kind: session!.cards.find((c) => c.id === pending.cardId)?.kind,
+        kind: pending.kind,
         grade: pending.grade,
         reviewedAt: pending.reviewedAt,
         key: pending.key,

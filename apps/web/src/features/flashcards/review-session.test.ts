@@ -130,3 +130,16 @@ describe('toSessionCard', () => {
     });
   });
 });
+
+describe('kind trên lượt chấm', () => {
+  it('giữ kind của thẻ để gửi đúng endpoint, kể cả khi id trùng giữa hai loại', () => {
+    const mixed = [
+      { kind: 'question' as const, id: 'x', front: 'Q', back: 'A' },
+      { kind: 'flashcard' as const, id: 'x', front: 'F', back: 'B' },
+    ];
+    const first = choose(reveal(startSession(mixed)), 'GOOD', at, key);
+    expect(first.pending?.kind).toBe('question');
+    const second = choose(reveal(confirmPending(first)), 'GOOD', at, key);
+    expect(second.pending?.kind).toBe('flashcard');
+  });
+});
