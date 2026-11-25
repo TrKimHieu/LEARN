@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { Icon } from '@/components/ui/icon';
 import { initialState } from './pomodoro';
 import { usePomodoro } from './pomodoro-session';
 
@@ -93,6 +94,16 @@ export function FloatingPomodoro() {
           ⠿ {phase}
         </button>
         {compact && <span className="font-semibold tabular-nums">{clock}</span>}
+        {compact && (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={stored.timer.running ? 'Tạm dừng' : finished ? 'Bắt đầu' : 'Tiếp tục'}
+            className="grid size-8 place-items-center rounded-control bg-primary text-primary-fg focus-ring"
+          >
+            <Icon name={stored.timer.running ? 'pause' : 'play'} size={16} />
+          </button>
+        )}
         <button
           type="button"
           aria-expanded={!compact}
