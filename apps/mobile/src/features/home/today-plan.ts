@@ -36,7 +36,7 @@ export interface SavedPlan { day: string; tasks: TodayTask[]; done: string[] }
 const MAX_TASKS = 4;
 const KINDS: unknown[] = ['review', 'lesson', 'exercise'];
 
-function lessonTask(l: TodayInputs['nextLessons'][number]): TodayTask {
+function lessonTask(l: TodayInputs['nextLessons'][number]): Extract<TodayTask, { kind: 'lesson' }> {
   return { ...l, id: `lesson:${l.lessonId}`, kind: 'lesson' };
 }
 
@@ -148,4 +148,37 @@ export function taskHref(task: TodayTask, questionsDue = 0): Href {
     case 'exercise':
       return routes.practice(task.courseId, task.lessonId, task.exerciseId);
   }
+}
+
+export type ContinueItem = Extract<TodayTask, { kind: 'lesson' | 'exercise' }> | { id: 'generate'; kind: 'generate' };
+
+/**
+ * Khu "Làm tiếp" khi xong hết việc hôm nay: bài kế tiếp, rồi bài tập chưa đạt khác, rồi tạo thẻ bằng AI.
+ * Bỏ việc đã có trong danh sách hôm nay; mục đầu là gợi ý chính. Luôn có mục tạo thẻ nên không rỗng.
+ */
+export function buildContinue(
+  { nextLessons, history }: Omit<TodayInputs, 'dueCount'>,
+  planned: TodayTask[],
+): ContinueItem[] {
+  const taken = new Set(planned.map((t) => t.id));
+  const items: ContinueItem[] = [];
+  const lesson = nextLessons.map(lessonTask).find((t) => !taken.has(t.id));
+  if (lesson) items.push(lesson);
+  const passed = new Set(history.filter((h) => h.passed).map((h) => h.exerciseId));
+  const failed = history.find(
+    (h) => !h.passed && !passed.has(h.exerciseId) && !taken.has(`exercise:${h.exerciseId}`),
+  );
+  if (failed) {
+    items.push({
+      id: `exercise:${failed.exerciseId}`,
+      kind: 'exercise',
+      courseId: failed.courseId,
+      lessonId: failed.lessonId,
+      exerciseId: failed.exerciseId,
+      lessonTitle: failed.lessonTitle,
+      score: failed.score,
+    });
+  }
+  items.push({ id: 'generate', kind: 'generate' });
+  return items;
 }
