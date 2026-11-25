@@ -51,6 +51,31 @@ export const reviewResultSchema = z.object({
   applied: z.boolean(),
 });
 
+/** Màn "Ôn tập": một hàng đợi chung cho câu hỏi bài tập và flashcard, server trộn theo `dueAt`. */
+export const REVIEW_QUEUE_LIMIT = 20;
+
+export const reviewQueueItemSchema = z.discriminatedUnion('kind', [
+  reviewCardSchema.extend({ kind: z.literal('question') }),
+  z.object({
+    kind: z.literal('flashcard'),
+    id: z.string(),
+    deckId: z.string(),
+    deckTitle: z.string(),
+    front: z.string(),
+    back: z.string(),
+    dueAt: z.string(),
+  }),
+]);
+
+export const reviewQueueResponseSchema = z.object({
+  items: z.array(reviewQueueItemSchema),
+  /** Tổng thẻ đến hạn của cả hai nguồn (có thể lớn hơn `items.length`). */
+  dueCount: z.number().int(),
+  nextDueAt: z.string().nullable(),
+});
+
+export type ReviewQueueItem = z.infer<typeof reviewQueueItemSchema>;
+export type ReviewQueueResponse = z.infer<typeof reviewQueueResponseSchema>;
 export type ReviewGrade = z.infer<typeof reviewGradeSchema>;
 export type ReviewCard = z.infer<typeof reviewCardSchema>;
 export type DueReviewsQuery = z.infer<typeof dueReviewsQuerySchema>;

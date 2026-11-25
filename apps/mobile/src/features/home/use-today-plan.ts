@@ -2,10 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { ProgressCourse } from '@/contracts';
-import { useDueCardCount } from '@/features/flashcards/flashcards-api';
 import { useLessons, useProgressCourses, useProgressHistory, useProgressOverview } from '@/features/learning/learning-api';
 import { useOffline } from '@/features/offline/offline-provider';
-import { useDueReviews } from '@/features/reviews/reviews-api';
+import { useReviewQueue } from '@/features/reviews/reviews-api';
 import { MOOD_KEY, readToday, setTodayListener, TODAY_KEY, todayKey, writeToday } from '@/lib/today-store';
 import { seenStudyDayToKeep } from './mood';
 import {
@@ -51,7 +50,7 @@ function useToday() {
       dayRef.current = now;
       // Làm tươi trước khi đổi ngày, để danh sách mới không dựng từ số liệu hôm qua.
       void client.invalidateQueries({ queryKey: ['progress'] });
-      void client.invalidateQueries({ queryKey: ['reviews', 'due'] });
+      void client.invalidateQueries({ queryKey: ['reviews', 'queue'] });
       void client.invalidateQueries({ queryKey: ['decks', 'due-count'] });
       setDay(now);
     });
@@ -66,20 +65,17 @@ export function useTodayPlan() {
   const day = useToday();
   const overview = useProgressOverview();
   const courses = useProgressCourses();
-  const questions = useDueReviews();
-  const cards = useDueCardCount();
+  // Hàng đợi chung đã gộp câu hỏi + thẻ tự tạo, cùng con số với màn Ôn tập.
+  const queue = useReviewQueue();
   const history = useProgressHistory(HISTORY_LIMIT);
   const next = useNextLessons(courses.data?.courses ?? []);
   const [plan, setPlan] = useState<SavedPlan | null>(null);
   const [previousSeen, setPreviousSeen] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
-  const questionsDue = questions.data?.dueCount ?? 0;
-  // Backend chưa có route thẻ tự tạo thì đếm thẻ lỗi: không chặn cả màn, chỉ tính câu hỏi.
-  const cardsDue = cards.data ?? 0;
-  const dueCount = questionsDue + cardsDue;
+  const dueCount = queue.data?.dueCount ?? 0;
 
-  const sources = [overview, courses, questions, history, ...next.queries];
+  const sources = [overview, courses, queue, history, ...next.queries];
   const gate = planGate(sources);
   const ready = gate === 'ready';
   const failed = sources.find((q) => q.isLoadingError);
@@ -125,8 +121,9 @@ export function useTodayPlan() {
     day,
     overview,
     /** Lỗi đếm thì không tự đánh dấu xong việc ôn. */
-    liveDue: questions.data ? dueCount : 1,
-    questionsDue,
+    liveDue: queue.data ? dueCount : 1,
+    // Màn Ôn tập đã gộp thẻ tự tạo, nên còn thẻ nào đến hạn là mở /review.
+    questionsDue: dueCount,
     previousSeen,
     studying: next.studying,
     nextLessons: next.lessons,

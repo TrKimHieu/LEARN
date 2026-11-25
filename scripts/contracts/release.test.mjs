@@ -65,7 +65,7 @@ test('OpenAPI covers real controllers, native auth, request schemas and safe exe
   assert.ok(api.paths['/api/v1/auth/login'].post.responses['201']);
   assert.ok(api.paths['/api/v1/auth/refresh'].post.responses['201']);
   assert.ok(api.paths['/api/v1/auth/logout'].post.responses['201']);
-  assert.ok(api.paths['/api/v1/auth/change-password'].post.responses['201']);
+  assert.ok(api.paths['/api/v1/auth/change-password'].post.responses['200']);
   assert.ok(api.paths['/api/v1/webhooks/stripe'].post.responses['200']);
   assert.ok(
     api.paths['/api/v1/auth/logout'].post.parameters.some(

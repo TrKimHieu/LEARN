@@ -27,6 +27,7 @@ export default function SettingsScreen() {
       <ReminderToggle />
       <LeaderboardToggle />
       <Button label="Quản lý dung lượng" variant="secondary" icon="file" onPress={() => router.push(routes.storage)} />
+      <Button label="Đổi mật khẩu" variant="secondary" icon="user" onPress={() => router.push(routes.changePassword)} />
       {/* Quản trị không còn là tab riêng (2026-11-19); server vẫn chặn thật bằng RolesGuard. */}
       {isAdmin && <Button label="Quản trị" variant="secondary" icon="shield" onPress={() => router.push(routes.admin)} />}
 

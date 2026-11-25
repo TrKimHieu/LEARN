@@ -4,7 +4,7 @@ import { ReviewEntry } from '../components/review-entry';
 
 let mockData: { dueCount: number } | undefined;
 const mockPush = jest.fn();
-jest.mock('../reviews-api', () => ({ useDueReviews: () => ({ data: mockData }) }));
+jest.mock('../reviews-api', () => ({ useReviewQueue: () => ({ data: mockData }) }));
 jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
 jest.mock('@/theme/theme', () => ({ usePalette: () => jest.requireActual('@/theme/tokens').light }));
 jest.mock('@/components/ui/icon', () => ({ Icon: () => null }));

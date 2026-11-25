@@ -102,6 +102,7 @@ export default function PracticeScreen() {
         answers={quick.answers}
         nextLesson={nextLesson}
         summary={summaryText(quick.summary)}
+        lessonId={lessonId}
         onRetry={() => {
           setQuick(null);
           setRun((n) => n + 1);

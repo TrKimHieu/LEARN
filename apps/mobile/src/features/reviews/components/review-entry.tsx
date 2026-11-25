@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Button, Card, Segmented, Txt } from '@/components/ui';
 import { space } from '@/theme/tokens';
 import { REMINDER_HOUR, useReviewReminder } from '../reminder';
-import { useDueReviews } from '../reviews-api';
+import { useReviewQueue } from '../reviews-api';
 
 /** Công tắc nhắc ôn trong Cài đặt (W3). */
 export function ReminderToggle() {
@@ -26,7 +26,7 @@ export function ReminderToggle() {
 
 /** Lối vào ở Tổng quan và cuối màn bài học (T2-7): chỉ hiện khi có thẻ đến hạn. */
 export function ReviewEntry() {
-  const { data } = useDueReviews();
+  const { data } = useReviewQueue();
   if (!data || data.dueCount <= 0) return null;
   return (
     <Card>

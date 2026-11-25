@@ -159,7 +159,14 @@ export class AuthService {
     return { user: toPublic(user) };
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  /** Đổi mật khẩu: thu hồi mọi phiên, rồi cấp phiên mới cho máy đang dùng (giữ đăng nhập). */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    userAgent?: string,
+    ip?: string,
+  ) {
     const user = await this.users.findById(userId);
     if (!user) throw ApiError.notFound();
     const ok = await safeVerify(user.passwordHash, currentPassword);
@@ -170,10 +177,19 @@ export class AuthService {
 
     // Đổi hash + thu hồi mọi phiên khác trong CÙNG một transaction — đổi mật khẩu thành
     // công nhưng token cũ vẫn sống nếu câu thứ hai lỗi là lỗ hổng.
+    const next = this.issueRefreshToken(user.id, ip, userAgent);
     await this.prisma.client.$transaction(async (tx) => {
       await this.users.updatePasswordHash(userId, passwordHash, tx);
       await this.refreshTokens.revokeAllForUser(userId, tx);
+      await this.refreshTokens.create(next.hashed, tx);
     });
+
+    const accessToken = await this.security.signAccessToken({
+      sub: user.id,
+      role: user.role,
+      email: user.email,
+    });
+    return { user: toPublic(user), accessToken, refreshToken: next.token };
   }
 
   /**

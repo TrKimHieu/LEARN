@@ -1,9 +1,35 @@
-import type { DueFlashcard, ReviewGrade } from '@learn/contracts';
+import type { DueFlashcard, ReviewGrade, ReviewQueueItem } from '@learn/contracts';
 
 /** Bốn Mức nhớ lấy thẳng từ contracts, không định nghĩa lại. */
 export type Grade = ReviewGrade;
 
-export type SessionCard = Pick<DueFlashcard, 'id' | 'front' | 'back'>;
+/** `kind`/`context` chỉ có ở hàng đợi "Ôn tập" chung; phiên ôn một bộ thẻ thì bỏ trống. */
+export type SessionCard = Pick<DueFlashcard, 'id' | 'front' | 'back'> & {
+  kind?: ReviewQueueItem['kind'];
+  context?: string;
+};
+
+export function toSessionCard(item: ReviewQueueItem): SessionCard {
+  if (item.kind === 'flashcard')
+    return {
+      kind: 'flashcard',
+      id: item.id,
+      front: item.front,
+      back: item.back,
+      context: item.deckTitle,
+    };
+  return {
+    kind: 'question',
+    id: item.questionId,
+    front: item.prompt,
+    back: item.explanation
+      ? `${item.answerText}
+
+${item.explanation}`
+      : item.answerText,
+    context: `${item.courseTitle} · ${item.lessonTitle}`,
+  };
+}
 
 /** Mức nhớ đã chọn, chờ máy chủ xác nhận. Giữ nguyên cả key và giờ chấm để gửi lại không bị chấm hai lần. */
 export interface PendingGrade {
@@ -11,6 +37,8 @@ export interface PendingGrade {
   grade: Grade;
   reviewedAt: string;
   key: string;
+  /** Loại thẻ lúc chấm (hàng đợi chung): id câu hỏi và id thẻ có thể trùng nhau. */
+  kind?: SessionCard['kind'];
 }
 
 export interface SessionState {
@@ -65,7 +93,13 @@ export function choose(
   if (!card || !state.revealed || state.pending) return state;
   return {
     ...state,
-    pending: { cardId: card.id, grade, reviewedAt: now.toISOString(), key: newKey() },
+    pending: {
+      cardId: card.id,
+      grade,
+      reviewedAt: now.toISOString(),
+      key: newKey(),
+      ...(card.kind ? { kind: card.kind } : {}),
+    },
   };
 }
 

@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { Avatar } from '@/features/shell/user-menu';
 import { ThemeSegmented } from '@/components/shared/theme-toggle';
 import { ReminderSettings } from '@/features/flashcards/reminder-settings';
+import { ChangePasswordForm } from '@/features/auth/change-password-form';
 import { LeaderboardSettings } from '@/features/friends/leaderboard-settings';
 import { Badge, Button, Card, Icon, PageHeader } from '@/components/ui';
 import { humanizeCode } from '@/lib/humanize';
@@ -93,6 +94,7 @@ export default function SettingsPage() {
 
         <ReminderSettings />
         <LeaderboardSettings />
+        <ChangePasswordForm />
       </div>
 
       <PlanRow />
