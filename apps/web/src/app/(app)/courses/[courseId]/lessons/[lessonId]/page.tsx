@@ -1,6 +1,7 @@
 'use client';
 
 import { UserText } from '@/components/ui/user-text';
+import { usePomodoro } from '@/features/flashcards/pomodoro-session';
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -69,6 +70,7 @@ export default function LessonReadPage({
 }) {
   const { courseId, lessonId } = use(params);
   const router = useRouter();
+  const pomodoro = usePomodoro();
   const lesson = useLesson(courseId, lessonId);
   usePageTitle(lesson.data?.title ?? 'Bài học');
   // Cùng query key với màn khóa học nên thường đã có sẵn trong cache.
@@ -213,6 +215,12 @@ export default function LessonReadPage({
 
         {/* ------------------------------------------------ đầu bài */}
         <header className="mt-6">
+          {pomodoro.stored && !pomodoro.stored.timer.running && (
+              <Button variant="secondary" size="sm" onClick={pomodoro.startFocus}>
+                <Icon name="clock" size={16} />
+                Bắt đầu Pomodoro
+              </Button>
+            )}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-fg-subtle">
               {position ? `Bài ${position.index + 1} / ${position.total}` : 'Bài học'}

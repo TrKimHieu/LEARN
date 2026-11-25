@@ -106,7 +106,16 @@ function useSession() {
       timer: stored.timer.running ? pause(stored.timer, at) : start(stored.timer, at),
     });
   }
-  return { stored, now, finished, clock, update, setFinished, toggle };
+  function startFocus() {
+    if (!stored || stored.timer.running) return;
+    const at = Date.now();
+    const timer = stored.timer.phase === 'focus' ? stored.timer : initialState(stored.settings);
+    setNow(at);
+    setFinished(null);
+    update({ ...stored, timer: start(timer, at) });
+  }
+
+  return { stored, now, finished, clock, update, setFinished, toggle, startFocus };
 }
 const Session = createContext<ReturnType<typeof useSession> | null>(null);
 export function PomodoroProvider({ children }: { children: ReactNode }) {
