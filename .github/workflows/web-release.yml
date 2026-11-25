@@ -2,7 +2,7 @@ name: web-release
 # Merge to main: test, build the image once, deploy to staging, then promote the same digest to
 # production after approval. Production stays off until PRODUCTION_ENABLED is 'true'.
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
