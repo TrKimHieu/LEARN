@@ -1,6 +1,6 @@
 # Thay đổi khi gộp monorepo và việc còn lại để deploy
 
-Tình trạng ghi ngày 2026-11-24. File này dành cho agent hướng dẫn người dùng deploy lần đầu sau khi gộp repo. Đọc file này cùng [`github-vars.md`](github-vars.md), [`infra/aws/README.md`](../../infra/aws/README.md) và các workflow trong `.github/workflows/`. Khi file này và code khác nhau, tin code.
+Tình trạng ghi ngày 2026-11-25. File này dành cho agent hướng dẫn người dùng deploy lần đầu sau khi gộp repo. Đọc file này cùng [`github-vars.md`](github-vars.md), [`infra/aws/README.md`](../../infra/aws/README.md) và các workflow trong `.github/workflows/`. Khi file này và code khác nhau, tin code.
 
 Vai trò của agent: hướng dẫn từng bước và kiểm tra kết quả. Người dùng tự làm mọi thao tác trên AWS Console/IAM và GitHub Settings. Staging được tắt để tiết kiệm chi phí. Chỉ bật lại khi người dùng sẵn sàng nghiệm thu, và nhắc người dùng tắt lại khi xong.
 
@@ -8,13 +8,13 @@ Vai trò của agent: hướng dẫn từng bước và kiểm tra kết quả. 
 
 Trước đây có ba repo GitHub:
 
-| Repo cũ                   | Nội dung                       | Trạng thái hiện tại                    |
-| ------------------------- | ------------------------------ | -------------------------------------- |
-| `TrKimHieu/LEARN_backend` | API, worker, compute, packages | Đang là monorepo                       |
-| `TrKimHieu/LEARN_website` | Web Next.js                    | Archive (chỉ đọc), README chỉ sang đây |
-| `TrKimHieu/LEARN_mobile`  | App Expo                       | Archive (chỉ đọc), README chỉ sang đây |
+| Repo cũ                   | Nội dung                       | Trạng thái hiện tại                                       |
+| ------------------------- | ------------------------------ | --------------------------------------------------------- |
+| `TrKimHieu/LEARN_backend` | API, worker, compute, packages | Đổi tên thành `TrKimHieu/LEARN` (2026-11-25), là monorepo |
+| `TrKimHieu/LEARN_website` | Web Next.js                    | Archive (chỉ đọc), README chỉ sang đây                    |
+| `TrKimHieu/LEARN_mobile`  | App Expo                       | Archive (chỉ đọc), README chỉ sang đây                    |
 
-Bây giờ mọi thứ nằm trong `TrKimHieu/LEARN_backend`. Tên repo được giữ nguyên dù repo đã chứa cả web và mobile. Thư mục local là `LEARN_mono`.
+Bây giờ mọi thứ nằm trong `TrKimHieu/LEARN`. GitHub chuyển hướng URL cũ `LEARN_backend` sang tên mới, nhưng OIDC subject thì **không** được chuyển hướng (xem bên dưới). Thư mục local là `LEARN_mono`.
 
 - Web nằm ở `apps/web`, mobile ở `apps/mobile`. Lịch sử commit của cả hai được giữ: các thư mục được viết lại vào `apps/*` rồi merge vào repo.
 - Có một workspace npm và một `package-lock.json` ở gốc. Chạy `npm ci` ở gốc, không chạy trong từng app.
@@ -24,35 +24,37 @@ Bây giờ mọi thứ nằm trong `TrKimHieu/LEARN_backend`. Tên repo được
   - `backend-*`, `web-*`, `mobile-*` và `aws-check`.
   - `paths` filter quyết định workflow nào chạy theo file đổi.
   - `web-release` chỉ chạy khi push lên `main` có đổi file web, và không có `workflow_dispatch`. Muốn chạy lại thì dùng "Re-run jobs" trên một lần chạy cũ.
-- Biến của web có tiền tố `WEB_`. Bảng đầy đủ nằm ở `github-vars.md`. Mọi biến đã được tạo trong `LEARN_backend` ngày 2026-11-24.
+- Biến của web có tiền tố `WEB_`. Bảng đầy đủ nằm ở `github-vars.md`. Mọi biến đã được tạo ngày 2026-11-24. Biến được giữ nguyên khi repo đổi tên.
 - `mobile-apk` chạy bằng tay (`workflow_dispatch`). Nó cần secret `EXPO_TOKEN` trong environment `staging`, mà secret này **chưa có**.
 
 ## Tình trạng AWS đã kiểm được
 
-| Thành phần                         | Trạng thái                                                                   |
-| ---------------------------------- | ---------------------------------------------------------------------------- |
-| Role `learn-github-build-backend`  | Nhận repo mới. `backend-release` đã đẩy image lên ECR.                       |
-| Role `learn-github-deploy-staging` | Nhận repo mới với `environment:staging`. Backend và web dùng chung role này. |
-| Role `learn-github-build-web`      | **Chưa kiểm.** Gần như chắc vẫn chỉ tin `LEARN_website`.                     |
-| EC2 staging `i-03fc47bdd73a43cf5`  | Đang tắt. Release lỗi với `Target is not the running LEARN staging host`.    |
-| Production                         | Chưa bật. `PRODUCTION_ENABLED` chưa đặt.                                     |
+| Thành phần                         | Trạng thái                                                                                                      |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Role `learn-github-build-backend`  | Từng nhận `LEARN_backend` (đã đẩy image lên ECR). **Chưa nhận tên mới.**                                        |
+| Role `learn-github-deploy-staging` | Từng nhận `LEARN_backend` với `environment:staging`. Backend và web dùng chung role này. **Chưa nhận tên mới.** |
+| Role `learn-github-build-web`      | Gần như chắc vẫn chỉ tin `LEARN_website`. **Chưa nhận tên mới.**                                                |
+| EC2 staging `i-03fc47bdd73a43cf5`  | Đang tắt. Release lỗi với `Target is not the running LEARN staging host`.                                       |
+| Production                         | Chưa bật. `PRODUCTION_ENABLED` chưa đặt.                                                                        |
 
-Repo dùng **immutable OIDC subject**, và subject chứa cả ID lẫn tên repo:
+Repo dùng **immutable OIDC subject**, và subject chứa cả ID lẫn tên repo. Sau khi đổi tên, subject là:
 
 ```text
-repo:TrKimHieu@191193987/LEARN_backend@1443929163:ref:refs/heads/main      # build
-repo:TrKimHieu@191193987/LEARN_backend@1443929163:environment:staging      # deploy
+repo:TrKimHieu@191193987/LEARN@1443929163:ref:refs/heads/main      # build
+repo:TrKimHieu@191193987/LEARN@1443929163:environment:staging      # deploy
 ```
 
-Muốn xem prefix thực tế, chạy `gh api repos/TrKimHieu/LEARN_backend/actions/oidc/customization/sub`, hoặc chạy workflow `aws-check`, workflow này in `sub` của từng job.
+Muốn xem prefix thực tế, chạy `gh api repos/TrKimHieu/LEARN/actions/oidc/customization/sub`, hoặc chạy workflow `aws-check`, workflow này in `sub` của từng job.
 
 ## Các bước deploy
 
 Làm theo thứ tự. Mỗi bước có điều kiện xong. Chỉ sang bước sau khi điều kiện đó đúng.
 
-1. **Sửa trust của `learn-github-build-web`.** Trong IAM, thêm subject build ở trên vào điều kiện `token.actions.githubusercontent.com:sub` của trust policy. Bỏ subject của `LEARN_website`.
-   - Xong khi: job `web-build` trong `aws-check` chạy `aws sts get-caller-identity` thành công.
-2. **Chạy `aws-check`.** Chạy từ tab Actions hoặc bằng `gh workflow run aws-check.yml -R TrKimHieu/LEARN_backend`.
+1. **Sửa trust của cả ba role.** Trong IAM, sửa điều kiện `token.actions.githubusercontent.com:sub` của trust policy:
+   - `learn-github-build-backend` và `learn-github-build-web` dùng subject build ở trên. Bỏ subject của `LEARN_backend` và `LEARN_website`.
+   - `learn-github-deploy-staging` dùng subject deploy ở trên. Bỏ subject cũ của `LEARN_backend`.
+   - Xong khi: cả ba trust policy chỉ còn subject có `LEARN@1443929163`.
+2. **Chạy `aws-check`.** Chạy từ tab Actions hoặc bằng `gh workflow run aws-check.yml -R TrKimHieu/LEARN`.
    - Xong khi: cả 4 job xanh (`backend-build`, `backend-staging`, `web-build`, `web-staging`).
 3. **Bật EC2 staging.**
    - IP public đổi sau mỗi lần stop/start, trừ khi có Elastic IP.
@@ -78,7 +80,7 @@ Làm theo thứ tự. Mỗi bước có điều kiện xong. Chỉ sang bước 
 ## Điều dễ sai
 
 - Commit lên `main` của một repo có workflow release sẽ tự deploy. Trước khi archive, một commit chỉ sửa README trên `LEARN_website` đã làm `release` tự chạy và phải huỷ tay. Ở monorepo, `paths` filter giới hạn việc này, nhưng sửa `package-lock.json` hay `packages/**` sẽ kích hoạt cả backend lẫn web.
-- Khi đổi tên repo, subject OIDC đổi theo, vì subject chứa tên repo. Sau khi đổi tên, phải sửa trust của mọi role (bước 1 cho cả ba role) và các tài liệu nhắc tên repo.
+- Subject OIDC chứa tên repo. Lần đổi tên `LEARN_backend` thành `LEARN` làm mọi role ngừng nhận repo cho tới khi xong bước 1. Mọi release lên AWS sẽ lỗi ở `configure-aws-credentials` cho tới lúc đó. Lần đổi tên sau cũng lặp lại việc này.
 - `sandbox:compare` trong CI chạy toàn bộ integration test với Postgres/Redis/MinIO thật. PR #19 sửa lỗi 500 khi chấm thẻ: `pg_advisory_xact_lock` phải gọi bằng `$executeRaw`, không gọi bằng `$queryRaw`.
 - Migration không reset DB và không seed. Seed gói và tài khoản admin là việc riêng, làm một lần.
 
