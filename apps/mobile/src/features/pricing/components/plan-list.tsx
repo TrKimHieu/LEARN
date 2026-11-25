@@ -4,7 +4,7 @@ import { Badge, Button, Card, ErrorState, Icon, InlineError, Skeleton, Txt } fro
 import { errorDetail, errorText } from '@/lib/api-client';
 import { humanizeCode } from '@/lib/format';
 import { space } from '@/theme/tokens';
-import { useCheckout, usePlans, useSubscription } from '../subscription-api';
+import { useCheckout, usePlans, useSubscription } from '@/features/settings/subscription-api';
 
 const INTERVAL_LABEL: Record<string, string> = { month: 'tháng', year: 'năm', week: 'tuần', day: 'ngày' };
 
@@ -53,14 +53,14 @@ export function PlanList() {
               <Txt variant="heading" style={{ flex: 1 }}>
                 {plan.name}
               </Txt>
-              {plan.isFutureExtension && <Badge label="Mở rộng tương lai" tone="outline" />}
+              {plan.isFutureExtension && <Badge label="Sắp có" tone="outline" />}
               {current && !plan.isFutureExtension && <Badge label="Đang dùng" icon="check" />}
             </View>
             {/* Gói "mở rộng tương lai" có priceCents = 0 làm chỗ giữ chỗ, không phải miễn phí. */}
             <Txt variant="title">
               {plan.isFutureExtension ? (
                 <Txt variant="heading" tone="subtle">
-                  Chưa công bố
+                  Sắp có
                 </Txt>
               ) : plan.priceCents === 0 ? (
                 'Miễn phí'
@@ -89,10 +89,10 @@ export function PlanList() {
                 Gói hiện tại
               </Txt>
             ) : plan.isFutureExtension ? (
-              <Button label="Chưa mở bán" variant="secondary" disabled fullWidth />
+              <Button label="Sắp có" variant="secondary" disabled fullWidth />
             ) : (
               <Button
-                label={upgrading === plan.code ? 'Đang xử lý…' : 'Chọn gói này'}
+                label={upgrading === plan.code ? 'Đang xử lý…' : (plan.priceCents > 0 ? 'Nâng cấp' : 'Chọn gói này')}
                 variant={plan.priceCents > 0 ? 'primary' : 'secondary'}
                 fullWidth
                 loading={upgrading === plan.code}

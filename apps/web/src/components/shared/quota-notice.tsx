@@ -36,7 +36,7 @@ export function QuotaNotice({
           {METRIC_LABEL[metric] ?? metric}, đã chạm hạn mức của gói hiện tại.
         </p>
         <Link
-          href="/settings"
+          href="/pricing"
           className="mt-1 inline-flex items-center gap-1 rounded-md font-semibold underline underline-offset-2 hover:no-underline focus-ring"
         >
           Nâng cấp gói để tiếp tục

@@ -5,7 +5,7 @@ import { errorDetail, errorText } from '@/lib/api-client';
 import { confirmAction } from '@/lib/dialog';
 import { dateLabel, humanizeCode } from '@/lib/format';
 import { space } from '@/theme/tokens';
-import { useCancelSubscription, useSubscription } from '../subscription-api';
+import { useCancelSubscription, useSubscription } from '@/features/settings/subscription-api';
 
 /** Nhãn tiếng Việt cho enum của API — không đổ mã máy ra màn hình (NN/g H2). */
 const STATUS_LABEL: Record<string, string> = {
