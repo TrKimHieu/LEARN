@@ -145,12 +145,31 @@ Xong khi: workflow `mobile-apk` chạy từ `main` qua bước `expo-github-acti
 
 Chỉ làm khi sẵn sàng nghiệm thu, vì EC2 tính tiền khi chạy.
 
-1. **Bật EC2.** Vào **EC2 → Instances → `i-03fc47bdd73a43cf5` → Instance state → Start**. Đợi tới khi trạng thái `Running` và **Status checks** đạt 2/2.
-2. **Kiểm IP public.** Nếu IP khác `54.206.111.17` (máy không có Elastic IP thì thường khác), địa chỉ mới có dạng `https://A-B-C-D.sslip.io`.
-   - Vào **Systems Manager → Session Manager → Start session** và chọn instance.
-   - Sửa `/opt/learn/.env` bằng `sudo nano /opt/learn/.env`. Đổi `DOMAIN`, `APP_URL` và `S3_PUBLIC_ENDPOINT` sang địa chỉ mới. Giữ quyền file `0600`, chủ là root.
-   - Trên GitHub, sửa `APP_URL` và `WEB_APP_URL` trong environment `staging` sang cùng địa chỉ.
-   - Không cần restart tay. Mỗi lần release, script sẽ `docker compose up -d caddy`, và Caddy lấy chứng chỉ mới cho domain mới.
+1. **Bật EC2 và đổi địa chỉ bằng CloudShell.** Máy không có Elastic IP nên mỗi lần start sẽ đổi IP. Script [`infra/aws/staging-power.sh`](../../infra/aws/staging-power.sh) làm trọn phần việc này:
+   - Bật máy và chờ status check 2/2.
+   - Lấy IP mới, rồi qua SSM sửa `DOMAIN`, `APP_URL`, `S3_PUBLIC_ENDPOINT` trong `/opt/learn/.env` thành `https://<ip-có-gạch>.sslip.io`.
+   - Khởi động lại `caddy`, `web`, `api` và `worker`, rồi chờ `/api/v1/health/ready` trả lời.
+   - In sẵn hai lệnh `gh` để cập nhật GitHub.
+
+   Mở CloudShell ở region Sydney rồi chạy:
+
+   ```bash
+   curl -fsSLO https://raw.githubusercontent.com/TrKimHieu/LEARN/main/infra/aws/staging-power.sh
+   bash staging-power.sh start
+   ```
+
+   - Xong khi: script in `Ready: https://...sslip.io`. Lần đầu sau khi đổi IP, Caddy cần khoảng một phút để lấy chứng chỉ.
+
+2. **Cập nhật GitHub.** Chạy trên máy cá nhân hai lệnh mà script in ra. Thay địa chỉ bằng địa chỉ thật:
+
+   ```powershell
+   gh variable set APP_URL -R TrKimHieu/LEARN -e staging -b https://A-B-C-D.sslip.io
+   gh variable set WEB_APP_URL -R TrKimHieu/LEARN -e staging -b https://A-B-C-D.sslip.io
+   ```
+
+   - Hoặc vào **Settings → Environments → staging** và sửa hai biến đó.
+   - Xong khi: `gh variable list -R TrKimHieu/LEARN -e staging` hiện địa chỉ mới.
+
 3. **Deploy backend trước**, vì nó mang bundle compose và script cho host.
    - Vào **Actions → backend-release**, mở lần chạy gần nhất trên `main`, rồi bấm **Re-run all jobs**.
    - Image của commit đó đã có trên ECR, nên workflow dùng lại digest cũ thay vì push lại.
@@ -164,7 +183,7 @@ Chỉ làm khi sẵn sàng nghiệm thu, vì EC2 tính tiền khi chạy.
    - Upload tài liệu.
    - Worker xử lý tài liệu và sinh bài học.
    - Làm bài và ôn thẻ.
-6. **Tắt EC2** khi xong: **Instance state → Stop**.
+6. **Tắt EC2** khi xong. Chạy `bash staging-power.sh stop` trong CloudShell, hoặc dùng **Instance state → Stop**.
 
 ## Khi gặp lỗi
 
