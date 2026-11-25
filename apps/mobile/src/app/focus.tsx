@@ -1,3 +1,4 @@
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useMemo } from 'react';
 import { View } from 'react-native';
@@ -36,6 +37,11 @@ export default function FocusScreen() {
       {f.finished && (
         <Notice>{f.finished === 'focus' ? 'Hết giờ học, nghỉ một chút.' : 'Hết giờ nghỉ, học tiếp nhé.'}</Notice>
       )}
+      <FeedbackPrompt
+        when={f.finished === 'focus'}
+        title="Pomodoro thế nào?"
+        items={[{ topic: 'POMODORO', question: 'USEFULNESS', label: 'Pomodoro có giúp bạn tập trung không?' }]}
+      />
       <Card>
         <View style={{ alignItems: 'center', gap: space.lg }}>
           <ProgressRing value={totalMs - f.remainingMs} max={totalMs} size={200} stroke={10} label={`Thời gian ${PHASE_LABEL[f.phase]}`}>

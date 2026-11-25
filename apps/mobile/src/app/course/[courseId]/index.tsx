@@ -1,3 +1,4 @@
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -22,6 +23,7 @@ export default function CourseDetailScreen() {
   const lessons = useLessons(courseId);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [docsOpen, setDocsOpen] = useState<boolean | null>(null);
+  const [askGeneration, setAskGeneration] = useState(false);
 
   const docList = documents.data?.documents;
   const docsShown = docsOpen ?? docList?.length === 0;
@@ -33,7 +35,10 @@ export default function CourseDetailScreen() {
   const handleJobDone = useCallback(
     (result: { succeeded: boolean }) => {
       setActiveJobId(null);
-      if (result.succeeded) void refetchLessons();
+      if (result.succeeded) {
+        setAskGeneration(true);
+        void refetchLessons();
+      }
     },
     [refetchLessons],
   );
@@ -86,6 +91,12 @@ export default function CourseDetailScreen() {
         documentCount={docList?.length ?? 0}
         // Đang học dở → chưa bắt đầu đầu tiên → bài đầu (xem lại).
         resume={resumeLesson(lessonList) ?? lessonList[0]}
+      />
+
+      <FeedbackPrompt
+        when={askGeneration}
+        title="Bài học AI vừa sinh thế nào?"
+        items={[{ topic: 'LESSON_GENERATION', subjectId: courseId, question: 'USEFULNESS', label: 'Bài học vừa sinh có hữu ích không?' }]}
       />
 
       {/* Học là việc chính (spec web 4.6): danh sách bài trước, việc quản lý sau. */}

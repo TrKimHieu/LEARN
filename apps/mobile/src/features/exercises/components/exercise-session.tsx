@@ -119,6 +119,7 @@ export function ExerciseSession({
         nextLesson={nextLesson}
         onRetry={retry}
         onOpenExercise={onOpenExercise}
+        lessonId={lessonId}
       />
     );
   }

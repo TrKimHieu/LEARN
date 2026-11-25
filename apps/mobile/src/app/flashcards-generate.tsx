@@ -1,3 +1,4 @@
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -109,6 +110,10 @@ export default function GenerateFlashcardsScreen() {
             )}
             {state === 'done' && (
               <>
+                <FeedbackPrompt
+                  title="Thẻ AI thế nào?"
+                  items={[{ topic: 'FLASHCARD_AI', question: 'QUALITY', label: 'Thẻ AI sinh ra có dùng được không?' }]}
+                />
                 <Txt variant="smallStrong">Đã sinh xong thẻ nháp.</Txt>
                 <Button label="Duyệt thẻ nháp" onPress={() => router.push(routes.drafts(jobId))} />
               </>

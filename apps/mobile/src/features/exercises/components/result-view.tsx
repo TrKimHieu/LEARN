@@ -11,6 +11,17 @@ import { space } from '@/theme/tokens';
 import { type AnswerState, describeCorrect, describeGiven, nextUnpassedExercise } from '../answers';
 import { questionTypes } from '../question-types/registry';
 import { ActionBar } from './action-bar';
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
+import type { FeedbackItem } from '@/features/feedback/feedback-policy';
+
+/** Cùng bộ câu hỏi với màn luyện tập của web (`practiceFeedbackItems`). */
+function practiceFeedbackItems(lessonId: string): FeedbackItem[] {
+  return [
+    { topic: 'LESSON', subjectId: lessonId, question: 'QUALITY', label: 'Nội dung bài học' },
+    { topic: 'LESSON', subjectId: lessonId, question: 'UNDERSTANDING', label: 'Bạn đã nắm được bài chưa?' },
+    { topic: 'PRACTICE', subjectId: lessonId, question: 'QUALITY', label: 'Bài kiểm tra có sát nội dung?' },
+  ];
+}
 
 export interface NextLesson {
   title: string;
@@ -29,8 +40,10 @@ export const ResultView = forwardRef<
     onOpenExercise: (id: string) => void;
     /** Phiên chấm từng câu: một dòng tóm tắt, ví dụ "Chuỗi đúng dài nhất 4 · 3 phút". */
     summary?: string;
+    /** Có thì hỏi ý kiến về bài học sau khi nộp. */
+    lessonId?: string;
   }
->(function ResultView({ data, result, answers, nextLesson, onRetry, onOpenExercise, summary }, ref) {
+>(function ResultView({ data, result, answers, nextLesson, onRetry, onOpenExercise, summary, lessonId }, ref) {
   const p = usePalette();
   const insets = useSafeAreaInsets();
   const byQuestion = new Map(result.results.map((r) => [r.questionId, r]));
@@ -46,6 +59,7 @@ export const ResultView = forwardRef<
   return (
     <View style={{ flex: 1, backgroundColor: p.app }}>
       <Screen ref={ref} bottomSpace={110 + insets.bottom}>
+        {lessonId && <FeedbackPrompt title="Bài này thế nào?" items={practiceFeedbackItems(lessonId)} />}
         {/* HANDBOOK §13.2: `celebrate` khi người dùng qua bài. */}
         <Card emphasis={result.passed ? 'strong' : 'dashed'} style={styles.resultCard}>
           <Mascot state={result.passed ? 'celebrate' : 'confused'} size={96} />
