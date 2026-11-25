@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HistoryItem, LessonSummary } from '@learn/contracts';
 import {
+  buildContinue,
   buildTasks,
   isDone,
   markDone,
@@ -183,5 +184,23 @@ describe('taskHref', () => {
         score: 40,
       }),
     ).toBe('/courses/C/lessons/L/practice?exercise=E%2F1');
+  });
+});
+
+describe('buildContinue', () => {
+  const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+  it('bài kế tiếp, bài tập chưa đạt, rồi tạo thẻ; bỏ việc đã có hôm nay', () => {
+    const planned = buildTasks({ dueCount: 0, nextLessons: [lesson(1), lesson(2)], history: [item('E1', false)] });
+    const history = [item('E1', false), item('E2', false)];
+    expect(ids(buildContinue({ nextLessons: [lesson(1), lesson(2)], history }, planned))).toEqual([
+      'lesson:L2',
+      'exercise:E2',
+      'generate',
+    ]);
+  });
+  it('không còn bài hay bài tập thì chỉ còn tạo thẻ', () => {
+    expect(ids(buildContinue({ nextLessons: [], history: [item('E1', true), item('E1', false)] }, []))).toEqual([
+      'generate',
+    ]);
   });
 });
