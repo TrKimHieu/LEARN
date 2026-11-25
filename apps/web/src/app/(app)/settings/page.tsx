@@ -13,6 +13,7 @@ import { Avatar } from '@/features/shell/user-menu';
 import { ThemeSegmented } from '@/components/shared/theme-toggle';
 import { ReminderSettings } from '@/features/flashcards/reminder-settings';
 import { LeaderboardSettings } from '@/features/friends/leaderboard-settings';
+import { ChangePasswordForm } from '@/features/auth/change-password-form';
 import {
   Badge,
   Button,
@@ -149,6 +150,7 @@ export default function SettingsPage() {
 
         <ReminderSettings />
         <LeaderboardSettings />
+        <ChangePasswordForm />
       </div>
 
       {/* ------------------------------------------------- gói hiện tại */}
