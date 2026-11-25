@@ -1,29 +1,30 @@
+import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useOffline } from '@/features/offline/offline-provider';
 import { markTodayDone } from '@/lib/today-store';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { ReviewCard, ReviewGrade } from '@/contracts';
+import type { ReviewGrade, ReviewQueueItem } from '@/contracts';
 import { Button, EmptyState, FlipCard, InlineError, ProgressBar, Screen, Txt } from '@/components/ui';
 import { errorText } from '@/lib/api-client';
 import { usePalette } from '@/theme/theme';
 import { space } from '@/theme/tokens';
 import { ActionBar } from '@/features/exercises/components/action-bar';
-import { useSubmitReview } from '../reviews-api';
+import { itemId, useSubmitReview } from '../reviews-api';
 
 const GRADES: { label: string; grade: ReviewGrade; variant: 'primary' | 'secondary' }[] = [
   { label: 'Quên', grade: 'AGAIN', variant: 'secondary' },
   { label: 'Khó', grade: 'HARD', variant: 'secondary' },
-  { label: 'Được', grade: 'GOOD', variant: 'primary' },
+  { label: 'Tốt', grade: 'GOOD', variant: 'primary' },
   { label: 'Dễ', grade: 'EASY', variant: 'secondary' },
 ];
 
 /**
- * Phiên ôn: chụp danh sách thẻ lúc mở (cache `['reviews','due']` co lại sau mỗi lượt chấm, phiên
+ * Phiên ôn: chụp danh sách thẻ lúc mở (cache `['reviews','queue']` co lại sau mỗi lượt chấm, phiên
  * không được nhảy theo). Mỗi thẻ: lật → chấm 4 mức → thẻ kế.
  */
-export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
+export function ReviewSession({ items: cards }: { items: ReviewQueueItem[] }) {
   const p = usePalette();
   const insets = useSafeAreaInsets();
   const submit = useSubmitReview();
@@ -52,6 +53,10 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
   if (index >= deck.length) {
     return (
       <Screen width="reading">
+        <FeedbackPrompt
+          title="Ôn thẻ thế nào?"
+          items={[{ topic: 'FLASHCARD_REVIEW', question: 'USEFULNESS', label: 'Ôn thẻ kiểu này có giúp bạn nhớ không?' }]}
+        />
         <EmptyState
           title="Xong lượt ôn hôm nay"
           description={`Bạn đã ôn ${deck.length} thẻ. Thẻ tiếp theo sẽ tới đúng lúc.`}
@@ -66,7 +71,7 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
   async function grade(g: ReviewGrade) {
     setError(null);
     try {
-      await submit.mutateAsync({ questionId: card.questionId, grade: g });
+      await submit.mutateAsync({ kind: card.kind, id: itemId(card), grade: g });
       setFlipped(false);
       setIndex((i) => i + 1);
     } catch (err) {
@@ -78,13 +83,13 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
     <View style={{ flex: 1, backgroundColor: p.app }}>
       <Screen width="reading" bottomSpace={130 + insets.bottom}>
         <Txt variant="small" tone="subtle">
-          {card.courseTitle} · {card.lessonTitle}
+          {card.kind === 'question' ? `${card.courseTitle} · ${card.lessonTitle}` : card.deckTitle}
         </Txt>
         {/* Đã xem đáp án một lần thì mở khoá nút chấm (cả khi lật bằng TalkBack/VoiceOver). */}
         <View testID="review-card">
           <FlipCard
-            cardId={card.questionId}
-            prompt={card.prompt}
+            cardId={itemId(card)}
+            prompt={card.kind === 'question' ? card.prompt : card.front}
             answer={answerOf(card)}
             onFlip={(revealed) => revealed && setFlipped(true)}
           />
@@ -120,7 +125,8 @@ export function ReviewSession({ cards }: { cards: ReviewCard[] }) {
   );
 }
 
-function answerOf(card: ReviewCard): string {
+function answerOf(card: ReviewQueueItem): string {
+  if (card.kind === 'flashcard') return card.back;
   return card.explanation ? `${card.answerText}\n\n${card.explanation}` : card.answerText;
 }
 
