@@ -9,6 +9,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/settings', label: 'Tôi', icon: 'settings' },
 ];
 
+export const DESKTOP_NAV_ITEMS: readonly NavItem[] = [
+  ...NAV_ITEMS.filter((item) => item.href !== '/settings'),
+  { href: '/focus', label: 'Tập trung', icon: 'clock' },
+  { href: '/progress', label: 'Tiến độ', icon: 'chart' },
+  { href: '/friends', label: 'Bạn học', icon: 'users' },
+];
 export const CREATE_ITEMS = [
   { href: '/courses/new', label: 'Khóa học từ tài liệu', icon: 'layers' },
   { href: '/decks?new=1', label: 'Bộ thẻ mới', icon: 'card' },
