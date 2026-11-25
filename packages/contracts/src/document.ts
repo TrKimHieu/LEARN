@@ -40,6 +40,8 @@ export const documentListSchema = z.object({
   chunkCount: z.number().int().default(0),
   errorMessage: z.string().nullable(),
   createdAt: z.string(),
+  /** URL ký sẵn tới tệp gốc; `null` với tài liệu nhập dạng văn bản (không có tệp gốc). */
+  downloadUrl: z.string().nullish(),
 });
 
 export type UploadUrlInput = z.infer<typeof uploadUrlSchema>;

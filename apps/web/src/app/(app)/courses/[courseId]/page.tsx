@@ -13,6 +13,7 @@ import {
   type UploadProgress,
 } from '@/features/documents/documents-api';
 import { UploadCancelledError } from '@/features/documents/upload-transfer';
+import { PasteTextForm } from '@/features/documents/paste-text-form';
 import { useLessons, useReorderLessons } from '@/features/learning/learning-api';
 import { useCourseJobs, useFinishAiJob, useGenerateLessons } from '@/features/ai/ai-api';
 import { failureReasonText } from '@/features/ai/ai-job-outcome';
@@ -39,7 +40,13 @@ import {
   Skeleton,
   cn,
 } from '@/components/ui';
-import { errorDetail, errorText, isNotFoundError, isQuotaExceededError } from '@/lib/api-client';
+import {
+  apiFetch,
+  errorDetail,
+  errorText,
+  isNotFoundError,
+  isQuotaExceededError,
+} from '@/lib/api-client';
 import { relativeTime } from '@/lib/format';
 import { formatFileSize } from '@/lib/format-size';
 import { usePageTitle } from '@/lib/use-page-title';
@@ -513,7 +520,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
               {upload.progress ? (
                 <UploadStatus progress={upload.progress} onCancel={upload.cancel} />
               ) : (
-                <Dropzone onFile={(f) => void handleFile(f)} />
+                <>
+                  <Dropzone onFile={(f) => void handleFile(f)} />
+                  <PasteTextForm courseId={courseId} />
+                </>
               )}
 
               {isQuotaExceededError(uploadError) && (
@@ -716,6 +726,7 @@ function DocumentRow({
       )}
       {doc.status !== 'EXTRACTING' && doc.status !== 'UPLOADED' && (
         <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+          {doc.downloadUrl && !confirming && <OpenOriginal documentId={doc.id} />}
           {confirming ? (
             <>
               <span className="text-fg-subtle">Xoá tài liệu này?</span>
@@ -831,5 +842,38 @@ function UploadStatus({ progress, onCancel }: { progress: UploadProgress; onCanc
         label="Tiến độ tải tài liệu"
       />
     </div>
+  );
+}
+
+/**
+ * Lấy URL ký mới mỗi lần bấm: URL trong danh sách chỉ sống 5 phút. Mở tab trước (trong cử chỉ bấm,
+ * không bị chặn popup) rồi mới gán địa chỉ.
+ */
+function OpenOriginal({ documentId }: { documentId: string }) {
+  const [failed, setFailed] = useState(false);
+  async function open() {
+    setFailed(false);
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
+    try {
+      const { url } = await apiFetch<{ url: string }>(`/api/v1/documents/${documentId}/download`);
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
+    } catch {
+      tab?.close();
+      setFailed(true);
+    }
+  }
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void open()}
+        className="inline-flex min-h-11 items-center rounded-md text-fg-subtle underline underline-offset-2 hover:text-fg focus-ring md:min-h-0"
+      >
+        Mở bản gốc
+      </button>
+      {failed && <span className="text-bad">Không mở được tệp.</span>}
+    </>
   );
 }

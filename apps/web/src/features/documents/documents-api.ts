@@ -1,6 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { DOCUMENT_TYPES, mimeFromFilename, type UploadUrlResponse } from '@learn/contracts';
+import {
+  DOCUMENT_TYPES,
+  mimeFromFilename,
+  type ImportTextDocumentInput,
+  type UploadUrlResponse,
+} from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
 import { refreshUsage } from '@/lib/query-refresh';
 import { UploadCancelledError, putWithProgress } from './upload-transfer';
@@ -99,4 +104,17 @@ export function useUploadDocument(courseId: string) {
   const cancel = useCallback(() => controller.current?.abort(), []);
 
   return { ...mutation, progress, cancel };
+}
+
+/** Dán văn bản thành tài liệu (`documents/text`), không cần tệp. */
+export function useImportText(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ImportTextDocumentInput) =>
+      apiFetch(`/api/v1/courses/${courseId}/documents/text`, { method: 'POST', body: input }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['courses'] });
+      void refreshUsage(queryClient);
+    },
+  });
 }
