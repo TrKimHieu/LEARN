@@ -9,9 +9,11 @@ export function usePlans() {
   });
 }
 
-export function useSubscription() {
+/** `enabled: false` trên trang giá công khai khi chưa đăng nhập — API này cần auth. */
+export function useSubscription(enabled = true) {
   return useQuery({
     queryKey: ['subscription'],
+    enabled,
     queryFn: () => apiFetch<SubscriptionResponse>('/api/v1/subscription'),
   });
 }

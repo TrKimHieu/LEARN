@@ -123,6 +123,8 @@ export default tseslint.config(
             flashcards: ['feedback'],
             // Màn Học gom việc hôm nay từ dữ liệu học và thẻ đến hạn.
             home: ['learning', 'flashcards'],
+            // Trang giá công khai: hook gói (`settings`), trạng thái đăng nhập (`auth`), tên thương hiệu (`shell`).
+            pricing: ['settings', 'auth', 'shell'],
           },
         },
       ],

@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { env } from '@/lib/env';
 
 /**
- * Chỉ liệt kê route công khai, không cần đăng nhập: ba màn `(auth)`.
+ * Chỉ liệt kê route công khai, không cần đăng nhập: ba màn `(auth)` và `/pricing`.
  *
  * **Không** liệt kê `/` — giờ chỉ redirect thẳng vào `/dashboard`, không còn nội
  * dung để crawler đọc. Cũng không liệt kê route trong `(app)` — chúng đứng sau
@@ -11,7 +11,7 @@ import { env } from '@/lib/env';
  * `/dev/ui` — 404 ở production (`notFound()` khi `NODE_ENV === 'production'`).
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const routes = ['/login', '/register', '/forgot-password'];
+  const routes = ['/login', '/register', '/forgot-password', '/pricing'];
   return routes.map((path) => ({
     url: `${env.siteUrl}${path}`,
     lastModified: new Date(),
