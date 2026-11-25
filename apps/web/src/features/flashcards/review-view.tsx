@@ -19,7 +19,7 @@ import { absoluteTime } from '@/lib/format';
 import { errorDetail, errorText } from '@/lib/api-client';
 import { usePageTitle } from '@/lib/use-page-title';
 import { markTodayDone } from '@/lib/today-store';
-import { useDueCards, useSubmitReview } from './flashcards-api';
+import { useDueCards, useReviewQueue, useSubmitReview } from './flashcards-api';
 import {
   GRADES,
   choose,
@@ -29,10 +29,18 @@ import {
   progressLabel,
   reveal,
   startSession,
+  toSessionCard,
   type Grade,
   type PendingGrade,
+  type SessionCard,
   type SessionState,
 } from './review-session';
+
+interface SessionSource {
+  cards: SessionCard[];
+  dueCount: number;
+  nextDueAt: string | null;
+}
 
 /** Phiên ôn một bộ (`deckId`) hoặc Ôn hôm nay gom mọi bộ (`deckId = null`). */
 export function ReviewView({ deckId }: { deckId: string | null }) {
@@ -40,7 +48,18 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
   const home = deckId ? `/decks/${deckId}` : '/decks';
   const homeLabel = deckId ? 'Bộ thẻ' : 'Thẻ';
   const exitLabel = deckId ? 'Về bộ thẻ' : 'Về Thẻ';
-  const due = useDueCards(deckId);
+  // Ôn một bộ: thẻ của bộ đó. "Ôn hôm nay": hàng đợi chung flashcard + câu hỏi (server trộn).
+  const deckDue = useDueCards(deckId, deckId !== null);
+  const queue = useReviewQueue(deckId === null);
+  const query = deckId ? deckDue : queue;
+  const source: SessionSource | undefined = deckId
+    ? deckDue.data
+    : queue.data && {
+        cards: queue.data.items.map(toSessionCard),
+        dueCount: queue.data.dueCount,
+        nextDueAt: queue.data.nextDueAt,
+      };
+  const due = { ...query, data: source, refetch: refetchSource };
   const submit = useSubmitReview();
   const router = useRouter();
   const [session, setSession] = useState<SessionState | null>(null);
@@ -56,8 +75,20 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
   }, [finished]);
 
   // "Ôn tiếp" chờ danh sách mới về rồi mới dựng phiên, để thẻ vừa chấm không quay lại.
+  async function refetchSource(): Promise<{ data: SessionSource | undefined }> {
+    if (deckId) return { data: (await deckDue.refetch()).data };
+    const fresh = (await queue.refetch()).data;
+    return {
+      data: fresh && {
+        cards: fresh.items.map(toSessionCard),
+        dueCount: fresh.dueCount,
+        nextDueAt: fresh.nextDueAt,
+      },
+    };
+  }
+
   async function restart() {
-    const fresh = await due.refetch();
+    const fresh = await refetchSource();
     if (fresh.data) setSession(startSession(fresh.data.cards));
   }
 
@@ -149,6 +180,7 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
     submit.mutate(
       {
         cardId: pending.cardId,
+        kind: session!.cards.find((c) => c.id === pending.cardId)?.kind,
         grade: pending.grade,
         reviewedAt: pending.reviewedAt,
         key: pending.key,
@@ -180,6 +212,7 @@ export function ReviewView({ deckId }: { deckId: string | null }) {
       </div>
 
       <Card className="mx-auto flex max-w-2xl flex-col gap-6">
+        {card.context && <p className="-mb-4 text-sm text-fg-subtle">{card.context}</p>}
         <p className="min-h-24 whitespace-pre-wrap text-xl font-medium leading-relaxed">
           <UserText full>{card.front}</UserText>
         </p>

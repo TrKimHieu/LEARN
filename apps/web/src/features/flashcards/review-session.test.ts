@@ -7,6 +7,7 @@ import {
   progressLabel,
   reveal,
   startSession,
+  toSessionCard,
 } from './review-session';
 
 const cards = [
@@ -76,5 +77,56 @@ describe('review session', () => {
     const s = startSession([]);
     expect(isFinished(s)).toBe(true);
     expect(progressLabel(s)).toBe('0/0');
+  });
+});
+
+describe('toSessionCard', () => {
+  const base = {
+    questionId: 'q1',
+    prompt: 'Thủ đô?',
+    type: 'SHORT_ANSWER',
+    answerText: 'Hà Nội',
+    explanation: null as string | null,
+    courseId: 'c1',
+    courseTitle: 'Địa lý',
+    lessonId: 'l1',
+    lessonTitle: 'Bài 1',
+    dueAt: '2026-11-25T00:00:00.000Z',
+    intervalDays: 0,
+    repetitions: 0,
+  };
+
+  it('câu hỏi: mặt trước là đề, ngữ cảnh là Khoá · Bài', () => {
+    expect(toSessionCard({ kind: 'question', ...base })).toEqual({
+      kind: 'question',
+      id: 'q1',
+      front: 'Thủ đô?',
+      back: 'Hà Nội',
+      context: 'Địa lý · Bài 1',
+    });
+  });
+
+  it('câu hỏi có giải thích thì nối sau đáp án', () => {
+    const c = toSessionCard({ kind: 'question', ...base, explanation: 'Từ 1010.' });
+    expect(c.back).toBe('Hà Nội\n\nTừ 1010.');
+  });
+
+  it('flashcard: ngữ cảnh là tên bộ thẻ', () => {
+    const c = toSessionCard({
+      kind: 'flashcard',
+      id: 'f1',
+      deckId: 'd1',
+      deckTitle: 'Từ vựng',
+      front: 'cat',
+      back: 'mèo',
+      dueAt: base.dueAt,
+    });
+    expect(c).toEqual({
+      kind: 'flashcard',
+      id: 'f1',
+      front: 'cat',
+      back: 'mèo',
+      context: 'Từ vựng',
+    });
   });
 });

@@ -13,12 +13,12 @@ import type {
   DueFlashcardsResponse,
   Flashcard,
   FlashcardDraftList,
-  FlashcardReviewResult,
   GenerateFlashcardsInput,
   LessonSummary,
   PatchFlashcardDraftInput,
   PatchDeckInput,
   PatchFlashcardInput,
+  ReviewQueueResponse,
   SubmitFlashcardReviewInput,
 } from '@learn/contracts';
 import { apiFetch } from '@/lib/api-client';
@@ -114,8 +114,9 @@ export function useCourseOptions() {
  * lúc mở, nên không tự hỏi lại khi quay lại tab và không giữ cache sau khi rời màn: lần ôn sau luôn
  * lấy danh sách mới.
  */
-export function useDueCards(deckId: string | null) {
+export function useDueCards(deckId: string | null, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: [...DECKS, deckId ?? 'all', 'due'],
     queryFn: () =>
       apiFetch<DueFlashcardsResponse>(
@@ -127,11 +128,23 @@ export function useDueCards(deckId: string | null) {
   });
 }
 
-/** Số thẻ đến hạn của mọi bộ cho điều hướng và dashboard; làm tươi mỗi phút và khi quay lại tab. */
+/** Hàng đợi "Ôn tập" chung (flashcard + câu hỏi), server đã trộn và cắt 20. */
+export function useReviewQueue(enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: [...DECKS, 'queue'],
+    queryFn: () => apiFetch<ReviewQueueResponse>('/api/v1/reviews/queue'),
+    staleTime: Infinity,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Số thẻ đến hạn của hàng đợi "Ôn tập" (cùng con số với mobile); làm tươi mỗi phút và khi quay lại tab. */
 export function useDueCount() {
   return useQuery({
     queryKey: DUE_COUNT_KEY,
-    queryFn: () => apiFetch<DueFlashcardsResponse>('/api/v1/flashcards/due?limit=1'),
+    queryFn: () => apiFetch<ReviewQueueResponse>('/api/v1/reviews/queue'),
     select: (d) => d.dueCount,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
@@ -141,16 +154,23 @@ export function useDueCount() {
 export function useSubmitReview() {
   const client = useQueryClient();
   return useMutation({
+    // `kind: 'question'` (hàng đợi chung) chấm câu hỏi bài tập; còn lại là flashcard.
     mutationFn: ({
       cardId,
       key,
+      kind,
       ...input
-    }: SubmitFlashcardReviewInput & { cardId: string; key: string }) =>
-      apiFetch<FlashcardReviewResult>(`/api/v1/cards/${cardId}/review`, {
-        method: 'POST',
-        body: input,
-        headers: { 'Idempotency-Key': key },
-      }),
+    }: SubmitFlashcardReviewInput & {
+      cardId: string;
+      key: string;
+      kind?: 'flashcard' | 'question';
+    }) =>
+      apiFetch<unknown>(
+        kind === 'question'
+          ? `/api/v1/reviews/${encodeURIComponent(cardId)}`
+          : `/api/v1/cards/${cardId}/review`,
+        { method: 'POST', body: input, headers: { 'Idempotency-Key': key } },
+      ),
     // Số đếm (danh sách bộ, điều hướng) làm tươi ngay; danh sách thẻ đang ôn thì không đụng tới.
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: DUE_COUNT_KEY });
