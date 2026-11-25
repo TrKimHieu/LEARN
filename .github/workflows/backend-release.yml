@@ -2,6 +2,7 @@ name: backend-release
 # Merge to main: test, build images once, deploy to staging, then promote the same digests to
 # production after approval. Production stays off until PRODUCTION_ENABLED is 'true'.
 on:
+  workflow_dispatch: 
   push:
     branches: [main]
     paths:
