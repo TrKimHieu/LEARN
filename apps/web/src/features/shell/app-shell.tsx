@@ -6,7 +6,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import { Icon } from '@/components/ui/icon';
 import { cn } from '@/components/ui/cn';
 import { Reveal } from '@/lib/motion';
-import { isActive, navItemsFor, NAV_ITEMS, ADMIN_ITEM } from './nav';
+import { isActive, navItemsFor, DESKTOP_NAV_ITEMS, ADMIN_ITEM } from './nav';
 import { dueBadgeLabel } from '@/features/flashcards/due-badge';
 import { useDueCount } from '@/features/flashcards/flashcards-api';
 import { ReminderWatcher } from '@/features/flashcards/reminder-watcher';
@@ -36,8 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
   const isAdmin = user?.role === 'ADMIN';
-  const topItems = NAV_ITEMS.filter((i) => i.href !== '/settings');
-  const desktopItems = isAdmin ? [...topItems, ADMIN_ITEM] : topItems;
+  const deskDESKTOP_NAV_ITEMS = isAdmin ? [...DESKTOP_NAV_ITEMS, ADMIN_ITEM] : DESKTOP_NAV_ITEMS;
   const mobileItems = navItemsFor(user?.role);
   const { data: dueCount } = useDueCount();
   const dueBadge = dueBadgeLabel(dueCount);
@@ -63,9 +62,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <header className="z-30 bg-app md:sticky md:top-0 md:border-b md:border-line md:bg-panel">
         <div className={cn(container, 'flex h-14 items-center gap-6')}>
-          <nav aria-label="Điều hướng chính" className="hidden h-full md:block">
+          <nav aria-label="Điều hướng chính" className="hidden h-full min-w-0 overflow-x-auto whitespace-nowrap md:block">
             <ul className="-ml-3 flex h-full items-stretch gap-1">
-              {desktopItems.map((item) => {
+              {deskDESKTOP_NAV_ITEMS.map((item) => {
                 const active = isActive(pathname, item.href);
                 return (
                   <li key={item.href} className="flex">

@@ -25,6 +25,7 @@ export const routes = {
   }),
   storage: '/storage' as Href,
   changePassword: '/settings-password' as Href,
+  pricing: '/pricing' as Href,
   focus: (ctx: { courseId?: string; lessonId?: string } = {}): Href => ({ pathname: '/focus', params: ctx }),
   deck: (deckId: string): Href => ({ pathname: '/deck/[deckId]', params: { deckId } }),
   deckReview: (deckId?: string): Href => ({ pathname: '/deck-review', params: deckId ? { deck: deckId } : {} }),

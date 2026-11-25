@@ -1,78 +1,23 @@
 'use client';
 
 import { FeedbackPrompt } from '@/features/feedback/feedback-prompt';
-import { useEffect, useState } from 'react';
+import { usePomodoro } from './pomodoro-session';
 import { Card, Field, Icon, Input, cn } from '@/components/ui';
 import { Mascot } from '@/components/shared/mascot';
 import type { MascotState } from '@/components/shared/mascot';
 import { usePageTitle } from '@/lib/use-page-title';
 import {
-  advance,
   countFocus,
   elapsedFraction,
-  formatClock,
   initialState,
   normalizeSettings,
-  parseTimer,
-  pause,
-  remaining,
-  start,
   todayKey,
-  type DayCount,
   type Phase,
   type PomodoroSettings,
   type TimerState,
 } from './pomodoro';
 
-const KEY = 'learn.pomodoro';
-/** Một vòng Pomodoro cổ điển là 4 phiên học. */
 const CYCLE = 4;
-
-interface Stored {
-  settings: PomodoroSettings;
-  timer: TimerState;
-  day: DayCount | null;
-}
-
-function load(): Stored {
-  try {
-    const raw = JSON.parse(window.localStorage.getItem(KEY) ?? 'null') as {
-      settings?: unknown;
-      timer?: unknown;
-      day?: DayCount;
-    } | null;
-    const settings = normalizeSettings(raw?.settings);
-    const timer = parseTimer(raw?.timer ? JSON.stringify(raw.timer) : null);
-    const day =
-      raw?.day && typeof raw.day.date === 'string' && typeof raw.day.done === 'number'
-        ? raw.day
-        : null;
-    return { settings, timer: timer ?? initialState(settings), day };
-  } catch {
-    const settings = normalizeSettings(undefined);
-    return { settings, timer: initialState(settings), day: null };
-  }
-}
-
-function save(value: Stored) {
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(value));
-  } catch {
-    /* bị chặn lưu trữ: bộ đếm vẫn chạy, chỉ không nhớ khi tải lại */
-  }
-}
-
-/** Báo hết giờ bằng thông báo trình duyệt nếu đã được cho phép; trình duyệt chặn thì bỏ qua. */
-function notify(finished: Phase) {
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  try {
-    new Notification(finished === 'focus' ? 'Hết giờ học' : 'Hết giờ nghỉ', {
-      tag: 'learn-pomodoro',
-    });
-  } catch {
-    /* Android Chrome chỉ cho thông báo qua service worker */
-  }
-}
 
 const PHASE_LABEL: Record<Phase, string> = { focus: 'Học', break: 'Nghỉ' };
 /** Màu theo giai đoạn: học dùng xanh dương (đang làm), nghỉ dùng xanh lá (đạt, thả lỏng). */
@@ -90,37 +35,7 @@ const endClock = (endsAt: number) =>
 
 /** Bộ đếm Pomodoro phía trình duyệt. Tính giờ theo mốc thật nên chuyển tab hay tải lại vẫn đúng. */
 export function PomodoroView() {
-  const [stored, setStored] = useState<Stored | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  const [finished, setFinished] = useState<Phase | null>(null);
-
-  useEffect(() => setStored(load()), []);
-
-  const update = (next: Stored) => {
-    setStored(next);
-    save(next);
-  };
-
-  useEffect(() => {
-    if (!stored?.timer.running) return;
-    const id = window.setInterval(() => {
-      const at = Date.now();
-      setNow(at);
-      const out = advance(stored.timer, stored.settings, at);
-      if (out.finished) {
-        update({
-          ...stored,
-          timer: out.state,
-          day: countFocus(stored.day, out.finished, todayKey(new Date(at))),
-        });
-        setFinished(out.finished);
-        notify(out.finished);
-      }
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [stored]);
-
-  const clock = stored ? formatClock(remaining(stored.timer, now)) : '';
+  const { stored, now, finished, clock, toggle, update, setFinished } = usePomodoro();
   usePageTitle(
     stored?.timer.running ? `${clock} · ${PHASE_LABEL[stored.timer.phase]}` : 'Pomodoro',
   );
@@ -130,13 +45,6 @@ export function PomodoroView() {
   const phase = timer.phase;
   const doneToday = countFocus(stored.day, null, todayKey(new Date(now))).done;
   const filled = doneToday === 0 ? 0 : doneToday % CYCLE || CYCLE;
-
-  function toggle() {
-    const at = Date.now();
-    setNow(at);
-    setFinished(null);
-    update({ ...stored!, timer: timer.running ? pause(timer, at) : start(timer, at) });
-  }
 
   function choosePhase(next: Phase) {
     setFinished(null);

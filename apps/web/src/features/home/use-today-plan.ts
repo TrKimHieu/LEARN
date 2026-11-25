@@ -10,7 +10,7 @@ import {
 } from '@/features/learning/learning-api';
 import { TODAY_KEY, todayKey } from '@/lib/today-store';
 import { seenStudyDayToKeep } from './mood';
-import { buildTasks, parsePlan, planGate, reconcile, retriedToday, type SavedPlan } from './today-plan';
+import { buildTasks, parsePlan, planGate, reconcile, retriedToday, type SavedPlan, type TodayInputs } from './today-plan';
 import { useNextLessons } from './use-next-lessons';
 
 /** Lịch sử đủ dài để thấy bài chưa đạt mới nhất và lần đạt sau đó (nếu có). */
@@ -72,6 +72,9 @@ export interface TodayPlanState {
   previousSeen: string | null;
   /** Số khóa đang học dở (0 < tiến độ < 100). */
   studying: number;
+  /** Dữ liệu cho khu "Làm tiếp" (đã tải sẵn cho danh sách hôm nay). */
+  nextLessons: TodayInputs['nextLessons'];
+  history: TodayInputs['history'];
 }
 
 /** "Việc hôm nay" (spec 4.2) dùng chung cho màn Học và popup nhắc học. */
@@ -121,5 +124,7 @@ export function useTodayPlan(): TodayPlanState {
     liveDue: due.data ?? 1,
     previousSeen,
     studying: next.studying,
+    nextLessons: next.lessons,
+    history: history.data?.items ?? [],
   };
 }

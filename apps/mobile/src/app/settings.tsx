@@ -1,27 +1,26 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, Screen, SectionTitle, Txt } from '@/components/ui';
+import { Button, Screen, Txt } from '@/components/ui';
 import { useAuth } from '@/features/auth/auth-context';
 import { ProfileCard } from '@/features/auth/components/profile-card';
-import { CurrentPlan } from '@/features/settings/components/current-plan';
-import { PlanList } from '@/features/settings/components/plan-list';
 import { ReminderToggle } from '@/features/reviews/components/review-entry';
 import { LeaderboardToggle } from '@/features/friends/components/leaderboard-toggle';
 import { ThemePicker } from '@/features/settings/components/theme-picker';
-import { usePlans, useSubscription } from '@/features/settings/subscription-api';
+import { useSubscription } from '@/features/settings/subscription-api';
 import { config } from '@/lib/config';
 import { routes } from '@/lib/routes';
 import { APP_VERSION, useServerMeta } from '@/lib/server-meta';
 
+const PLAN_NAME: Record<string, string> = { FREE: 'Free', PRO: 'Pro', TEAM: 'Team' };
+const planName = (code: string) => PLAN_NAME[code] ?? code;
+
 export default function SettingsScreen() {
-  // Chỉ để kéo-làm-mới; các thẻ bên dưới tự dùng cùng query (TanStack Query gộp request).
-  const plans = usePlans();
   const subscription = useSubscription();
   const { meta, contractsDiffer } = useServerMeta();
   const isAdmin = useAuth().user?.role === 'ADMIN';
 
   return (
-    <Screen width="reading" onRefresh={() => Promise.all([plans.refetch(), subscription.refetch()])}>
+    <Screen width="reading" onRefresh={() => subscription.refetch()}>
 
       <ProfileCard />
       <ThemePicker />
@@ -32,15 +31,12 @@ export default function SettingsScreen() {
       {/* Quản trị không còn là tab riêng (2026-11-19); server vẫn chặn thật bằng RolesGuard. */}
       {isAdmin && <Button label="Quản trị" variant="secondary" icon="shield" onPress={() => router.push(routes.admin)} />}
 
-      <View>
-        <SectionTitle title="Gói hiện tại" />
-        <CurrentPlan />
-      </View>
-
-      <View>
-        <SectionTitle title="Các gói" />
-        <PlanList />
-      </View>
+      <Button
+        label={`Gói ${subscription.data ? planName(subscription.data.planCode) : '…'} · Xem các gói`}
+        variant="secondary"
+        icon="arrow-right"
+        onPress={() => router.push(routes.pricing)}
+      />
 
       <View style={{ gap: 2 }}>
         <Txt variant="caption" tone="subtle" style={{ textAlign: 'center' }}>

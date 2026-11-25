@@ -154,7 +154,7 @@ export function QuotaNotice({
       <Txt
         variant="smallStrong"
         accessibilityRole="link"
-        onPress={() => router.navigate('/settings')}
+        onPress={() => router.navigate('/pricing')}
         style={{ marginTop: 4, textDecorationLine: 'underline' }}
       >
         Nâng cấp gói để tiếp tục

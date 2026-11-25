@@ -126,6 +126,8 @@ export function useTodayPlan() {
     questionsDue: dueCount,
     previousSeen,
     studying: next.studying,
+    nextLessons: next.lessons,
+    history: history.data?.items ?? [],
     hasCourses: (courses.data?.courses.length ?? 0) > 0,
   };
 }

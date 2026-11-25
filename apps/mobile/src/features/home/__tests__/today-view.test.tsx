@@ -25,7 +25,7 @@ const plan = (done: string[]): SavedPlan => ({
   ],
 });
 const base = (over: Record<string, unknown>) => ({
-  gate: 'ready', failed: undefined, retry: jest.fn(), day: '2026-11-19', previousSeen: null, studying: 1,
+  gate: 'ready', failed: undefined, retry: jest.fn(), day: '2026-11-19', previousSeen: null, studying: 1, nextLessons: [], history: [],
   hasCourses: true, liveDue: 5, questionsDue: 5,
   overview: { data: { activeStreak: 3, lastStudyDay: '2026-11-18' }, refetch: jest.fn() },
   ...over,
@@ -63,4 +63,6 @@ it('celebrates when every task is done and hides the action buttons', () => {
   expect(text().split('|')).not.toContain('Ôn');
   expect(mockMascot).toHaveBeenLastCalledWith({ state: 'celebrate', size: 88 });
   expect(mockSync).toHaveBeenLastCalledWith([], expect.any(Date), 3);
+  expect(text()).toContain('Làm tiếp');
+  expect(text()).toContain('Tạo thẻ bằng AI');
 });

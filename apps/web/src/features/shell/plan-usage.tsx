@@ -44,7 +44,7 @@ export function PlanUsage({ onNavigate }: { onNavigate?: () => void }) {
           Gói <span className="font-semibold">{planLabel(data.planCode)}</span>
         </p>
         <Link
-          href="/settings"
+          href="/pricing"
           onClick={onNavigate}
           className="rounded-md text-xs font-medium text-accent underline underline-offset-2 hover:no-underline focus-ring"
         >
