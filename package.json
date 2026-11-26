@@ -35,7 +35,8 @@
     "sandbox:verify": "node scripts/sandbox/verify.mjs",
     "sandbox:stop": "docker compose -f infra/docker-compose.m1.yml stop",
     "contracts:consumer": "node scripts/contracts/consumer-smoke.mjs",
-    "sandbox:compare": "node scripts/sandbox/compare-pilot.mjs"
+    "sandbox:compare": "node scripts/sandbox/compare-pilot.mjs",
+    "test:btth": "node --test --test-concurrency=1 tests/unit/*.test.mjs tests/integration/*.test.mjs tests/e2e/*.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
