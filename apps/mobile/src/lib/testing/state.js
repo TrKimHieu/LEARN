@@ -293,9 +293,21 @@ function tick(state, now = Date.now()) {
           createdAt: job.finishedAt,
         },
       ];
-      if (!job.materialized && course) materializeLessons(state, job, course);
+      if (!job.materialized && course) (job.type === 'GENERATE_FLASHCARDS' ? materializeDrafts : materializeLessons)(state, job, course);
     }
   }
+}
+
+function materializeDrafts(state, job, course) {
+  const count = job.inputParams?.count ?? 10;
+  const createdAt = new Date().toISOString();
+  for (let i = 1; i <= Math.min(count, 5); i++) {
+    (state.flashcardDrafts ??= []).push({
+      id: randomUUID(), courseId: course.id, aiJobId: job.id, userId: job.userId,
+      front: `${course.title}: khái niệm ${i}?`, back: `Giải thích mẫu cho khái niệm ${i} (AI giả).`, createdAt,
+    });
+  }
+  job.materialized = true;
 }
 
 function materializeLessons(state, job, course) {

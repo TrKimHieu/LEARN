@@ -35,6 +35,15 @@ import {
   submitExerciseSchema,
   subscriptionResponseSchema,
   uploadUrlResponseSchema,
+  reviewQueueResponseSchema,
+  deckSummarySchema,
+  deckListResponseSchema,
+  deckDetailResponseSchema,
+  flashcardSchema,
+  dueFlashcardsResponseSchema,
+  flashcardReviewResultSchema,
+  flashcardDraftListSchema,
+  acceptFlashcardDraftsResultSchema,
 } from '@/contracts';
 
 const { createApp } = require('../app') as { createApp: (o: object) => { server: Server } };
@@ -472,5 +481,48 @@ describe('XP và bạn học (spec 2026-11-20)', () => {
 
     expect((await call('PATCH', '/api/v1/friends/settings', { token, body: { leaderboardHidden: true } })).status).toBe(200);
     expect(ok(friendsOverviewSchema, await call('GET', '/api/v1/friends', { token })).leaderboardHidden).toBe(true);
+  });
+});
+
+describe('ôn tập, bộ thẻ, thẻ nháp AI, feedback, đổi mật khẩu', () => {
+  it('hàng đợi trộn câu hỏi và thẻ; CRUD bộ thẻ; chấm thẻ', async () => {
+    const { accessToken: token } = await login();
+    const queue = ok(reviewQueueResponseSchema, await call('GET', '/api/v1/reviews/queue', { token }));
+    expect(queue.items.some((i) => i.kind === 'flashcard')).toBe(true);
+    expect(queue.items.some((i) => i.kind === 'question')).toBe(true);
+
+    const deck = ok(deckSummarySchema, await call('POST', '/api/v1/decks', { token, body: { title: 'Bộ thử' } }), 201);
+    const card = ok(flashcardSchema, await call('POST', `/api/v1/decks/${deck.id}/cards`, { token, body: { front: 'A', back: 'B' } }), 201);
+    expect(ok(deckDetailResponseSchema, await call('GET', `/api/v1/decks/${deck.id}/cards`, { token })).cards).toHaveLength(1);
+    const due = ok(dueFlashcardsResponseSchema, await call('GET', `/api/v1/decks/${deck.id}/due`, { token }));
+    expect(due.dueCount).toBe(1);
+    const graded = ok(flashcardReviewResultSchema, await call('POST', `/api/v1/cards/${card.id}/review`, { token, body: { grade: 'GOOD', reviewedAt: new Date().toISOString() } }));
+    expect(graded.intervalDays).toBe(3);
+    expect(ok(dueFlashcardsResponseSchema, await call('GET', `/api/v1/decks/${deck.id}/due`, { token })).dueCount).toBe(0);
+    ok(flashcardSchema, await call('PATCH', `/api/v1/cards/${card.id}`, { token, body: { front: 'A2' } }));
+    expect((await call('DELETE', `/api/v1/decks/${deck.id}`, { token })).status).toBe(204);
+    expect(ok(deckListResponseSchema, await call('GET', '/api/v1/decks', { token })).decks.some((d) => d.id === deck.id)).toBe(false);
+  });
+
+  it('sinh thẻ nháp bằng AI giả rồi chấp nhận vào bộ mới', async () => {
+    const { accessToken: token } = await login();
+    const ws = await call('GET', '/api/v1/workspace', { token });
+    const courseId = ws.json.courses.find((c: { title: string }) => c.title.includes("TypeScript")).id;
+    const lessons = await call('GET', `/api/v1/courses/${courseId}/lessons`, { token });
+    const job = ok(aiJobSummarySchema, await call('POST', `/api/v1/ai/courses/${courseId}/generate-flashcards`, { token, body: { lessonId: lessons.json.lessons[0].id, count: 3 } }), 202);
+    await wait(1500);
+    const drafts = ok(flashcardDraftListSchema, await call('GET', `/api/v1/flashcards/drafts?aiJobId=${job.id}`, { token })).drafts;
+    expect(drafts).toHaveLength(3);
+    const res = ok(acceptFlashcardDraftsResultSchema, await call('POST', '/api/v1/flashcards/drafts/accept', { token, body: { draftIds: drafts.map((d) => d.id), newDeckTitle: 'Từ AI' } }));
+    expect(res.accepted).toBe(3);
+  });
+
+  it('feedback và đổi mật khẩu', async () => {
+    const { accessToken: token } = await login();
+    expect((await call('POST', '/api/v1/feedback', { token, body: { topic: 'POMODORO', answers: [{ question: 'USEFULNESS', score: 5 }] } })).json).toEqual({ saved: 1 });
+    expect((await call('POST', '/api/v1/auth/change-password', { token, body: { currentPassword: 'sai', newPassword: 'Moi@12345' } })).status).toBe(401);
+    ok(nativeAuthResponseSchema, await call('POST', '/api/v1/auth/change-password', { token, body: { currentPassword: 'Demo@12345', newPassword: 'Moi@12345' } }));
+    await login('demo@learn.ai', 'Moi@12345');
+    await call('POST', '/__mock/reset');
   });
 });
