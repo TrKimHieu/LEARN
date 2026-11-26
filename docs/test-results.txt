@@ -1,0 +1,130 @@
+
+> learn-backend@0.1.0 test:btth
+> node --test --test-concurrency=1 tests/unit/*.test.mjs tests/integration/*.test.mjs tests/e2e/*.test.mjs
+
+TAP version 13
+# (node:7002) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: TC-06 & TC-15 (E2E): Kiem thu toan trinh truy cap Web giao dien nguoi dung va trang thai san sang
+ok 1 - TC-06 & TC-15 (E2E): Kiem thu toan trinh truy cap Web giao dien nguoi dung va trang thai san sang
+  ---
+  duration_ms: 3034.566383
+  type: 'test'
+  ...
+# (node:7013) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: TC-13 (Integration - Security): Yeu cau sinh bai hoc AI khi chua dang nhap bi tu choi 401
+ok 2 - TC-13 (Integration - Security): Yeu cau sinh bai hoc AI khi chua dang nhap bi tu choi 401
+  ---
+  duration_ms: 1372.636702
+  type: 'test'
+  ...
+# Subtest: TC-13b (Integration - BullMQ Queue): Kiem tra ha tang Redis hang doi phuc vu AIJob san sang
+ok 3 - TC-13b (Integration - BullMQ Queue): Kiem tra ha tang Redis hang doi phuc vu AIJob san sang
+  ---
+  duration_ms: 727.028868
+  type: 'test'
+  ...
+# (node:7024) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: TC-04 (Integration - EG): Dang nhap voi mat khau sai tra ve HTTP 401 va khong ro ri hash
+ok 4 - TC-04 (Integration - EG): Dang nhap voi mat khau sai tra ve HTTP 401 va khong ro ri hash
+  ---
+  duration_ms: 1640.198194
+  type: 'test'
+  ...
+# Subtest: TC-04b (Integration - BVA): Gui request login voi body rong tra ve HTTP 400 Bad Request
+ok 5 - TC-04b (Integration - BVA): Gui request login voi body rong tra ve HTTP 400 Bad Request
+  ---
+  duration_ms: 1482.264333
+  type: 'test'
+  ...
+# Subtest: TC-05b (Integration): Thu nghiem lam moi phien (Refresh Token) khi chua dang nhap tra ve 401
+ok 6 - TC-05b (Integration): Thu nghiem lam moi phien (Refresh Token) khi chua dang nhap tra ve 401
+  ---
+  duration_ms: 620.178413
+  type: 'test'
+  ...
+# (node:7039) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: TC-10 (Integration - Security): Yeu cau Presigned URL tai tai lieu khi chua dang nhap bi chan 401
+ok 7 - TC-10 (Integration - Security): Yeu cau Presigned URL tai tai lieu khi chua dang nhap bi chan 401
+  ---
+  duration_ms: 10317.983945
+  type: 'test'
+  ...
+# Subtest: TC-10b (Integration - Storage Health): Kiem tra ha tang luu tru MinIO S3 san sang
+ok 8 - TC-10b (Integration - Storage Health): Kiem tra ha tang luu tru MinIO S3 san sang
+  ---
+  duration_ms: 879.101391
+  type: 'test'
+  ...
+# Subtest: TC-11 (Unit - DT): Bang quyet dinh kiem tra cau truc bai hoc AI sinh
+ok 9 - TC-11 (Unit - DT): Bang quyet dinh kiem tra cau truc bai hoc AI sinh
+  ---
+  duration_ms: 7.285457
+  type: 'test'
+  ...
+# Subtest: TC-12 (Unit - BVA): Phan tich gia tri bien do dai van ban nguon dua vao AI
+ok 10 - TC-12 (Unit - BVA): Phan tich gia tri bien do dai van ban nguon dua vao AI
+  ---
+  duration_ms: 0.820869
+  type: 'test'
+  ...
+# Subtest: TC-01 (Unit - EP): Email hop le va mat khau du do dai duoc chap nhan
+ok 11 - TC-01 (Unit - EP): Email hop le va mat khau du do dai duoc chap nhan
+  ---
+  duration_ms: 11.139399
+  type: 'test'
+  ...
+# Subtest: TC-02 (Unit - EP): Email khong co ky tu @ hoac sai cau truc bi tu choi
+ok 12 - TC-02 (Unit - EP): Email khong co ky tu @ hoac sai cau truc bi tu choi
+  ---
+  duration_ms: 0.893002
+  type: 'test'
+  ...
+# Subtest: TC-03 (Unit - BVA): Phan tich gia tri bien cho do dai mat khau (nguong 8 ky tu)
+ok 13 - TC-03 (Unit - BVA): Phan tich gia tri bien cho do dai mat khau (nguong 8 ky tu)
+  ---
+  duration_ms: 1.004662
+  type: 'test'
+  ...
+# Subtest: TC-03b (Unit - EG): Doan loi khi nguoi dung nhap mat khau trong hoac chi chua dau cach
+ok 14 - TC-03b (Unit - EG): Doan loi khi nguoi dung nhap mat khau trong hoac chi chua dau cach
+  ---
+  duration_ms: 0.342506
+  type: 'test'
+  ...
+# Subtest: TC-07 & TC-08 (Unit - BVA): Phan tich gia tri bien dung luong tep (nguong 25 MB)
+ok 15 - TC-07 & TC-08 (Unit - BVA): Phan tich gia tri bien dung luong tep (nguong 25 MB)
+  ---
+  duration_ms: 7.035489
+  type: 'test'
+  ...
+# Subtest: TC-08b (Unit - EG): Doan loi khi tep 0 byte hoac so am
+ok 16 - TC-08b (Unit - EG): Doan loi khi tep 0 byte hoac so am
+  ---
+  duration_ms: 0.481883
+  type: 'test'
+  ...
+# Subtest: TC-09 (Unit - EP): Phan vung tuong duong dinh dang tep tai len
+ok 17 - TC-09 (Unit - EP): Phan vung tuong duong dinh dang tep tai len
+  ---
+  duration_ms: 0.870796
+  type: 'test'
+  ...
+# Subtest: TC-09b (Unit): Kiem tra ham dinh dang dung luong hien thi
+ok 18 - TC-09b (Unit): Kiem tra ham dinh dang dung luong hien thi
+  ---
+  duration_ms: 0.564392
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 24745.007359

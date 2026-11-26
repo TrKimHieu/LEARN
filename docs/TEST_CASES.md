@@ -1,0 +1,23 @@
+# BẢNG THIẾT KẾ TEST CASE - DỰ ÁN LEARN
+
+**Dự án:** LEARN – Website học tập tạo bài học từ tài liệu bằng AI  
+**3 Chức năng chọn:** Đăng nhập, Tải tài liệu, Sinh bài học bằng AI  
+**Kỹ thuật sử dụng:** Phân vùng tương đương (EP), Phân tích giá trị biên (BVA), Đoán lỗi (EG), Chuyển trạng thái (ST), Bảng quyết định (DT).
+
+| ID | Chức năng | Mức | Kỹ thuật | Tiền điều kiện | Dữ liệu vào | Bước thực hiện | Kết quả mong đợi | Kết quả thực tế | Trạng thái |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-01** | Đăng nhập | Unit | Phân vùng tương đương | Không | Email: student@learn.local, Mật khẩu: P@ssword123 | Gọi hàm validate schema đăng nhập | Dữ liệu hợp lệ, schema trả về success: true | Dữ liệu hợp lệ, schema trả về success: true | Pass |
+| **TC-02** | Đăng nhập | Unit | Phân vùng tương đương | Không | Email không có ký tự @ (studentlearn.local) | Gọi hàm validate schema đăng nhập | Schema trả về lỗi INVALID_EMAIL | Schema trả về lỗi INVALID_EMAIL | Pass |
+| **TC-03** | Đăng nhập | Unit | Giá trị biên | Không | Mật khẩu ngắn 7 ký tự (Pass123), chuẩn tối thiểu 8 | Gọi hàm validate độ dài mật khẩu | Schema trả về lỗi PASSWORD_TOO_SHORT | Schema trả về lỗi PASSWORD_TOO_SHORT | Pass |
+| **TC-04** | Đăng nhập | Integration | Đoán lỗi | Tài khoản đã tồn tại trong DB | Email đúng, Mật khẩu sai (wrongpassword) | Gửi POST /api/v1/auth/login | HTTP 401 Unauthorized, thông báo lỗi tiếng Việt, không lộ hash | HTTP 401 Unauthorized, thông báo đúng, không lộ hash | Pass |
+| **TC-05** | Đăng nhập | Integration | Luồng đúng | Tài khoản đã kích hoạt trong DB | Email đúng, Mật khẩu đúng | Gửi POST /api/v1/auth/login | HTTP 200 OK, trả accessToken (JWT), set cookie refreshToken HttpOnly | HTTP 200 OK, trả accessToken, set cookie HttpOnly | Pass |
+| **TC-06** | Đăng nhập | E2E | Luồng đúng | Máy chủ Web và API đang chạy | Mở trang /login, nhập tài khoản hợp lệ | 1. Mở URL /login<br>2. Điền form<br>3. Bấm 'Đăng nhập' | Đăng nhập thành công, chuyển hướng tới /courses, xuất hiện thanh điều hướng | Đăng nhập thành công, chuyển hướng trang hợp lệ | Pass |
+| **TC-07** | Tải tài liệu | Unit | Giá trị biên | Không | File dung lượng đúng 25 MB (,214,400$ bytes) | Gọi hàm kiểm tra validateFileSize | Trả về valid: true, chấp nhận file | Trả về valid: true | Pass |
+| **TC-08** | Tải tài liệu | Unit | Giá trị biên | Không | File dung lượng 25 MB + 1 byte (,214,401$ bytes) | Gọi hàm kiểm tra validateFileSize | Trả về valid: false, mã lỗi FILE_TOO_LARGE | Trả về valid: false, báo lỗi vượt kích thước | Pass |
+| **TC-09** | Tải tài liệu | Unit | Phân vùng tương đương | Không | File có MIME type: application/x-msdownload (.exe) | Gọi hàm kiểm tra isAllowedDocumentMime | Trả về false, từ chối định dạng nguy hiểm | Trả về false, từ chối file | Pass |
+| **TC-10** | Tải tài liệu | Integration | Luồng đúng | Đã đăng nhập, có mã khoá học courseId | Tên file: giao-trinh.pdf, kích thước: 2 MB | Gửi POST /api/v1/courses/:id/documents/upload-url | HTTP 201 Created, trả về uploadUrl có chữ ký MinIO S3 và documentId | HTTP 201, nhận URL presigned hợp lệ | Pass |
+| **TC-11** | Sinh bài học | Unit | Bảng quyết định | Không | Dữ liệu LLM trả về thiếu trường exercises hoặc sai cấu trúc | Gọi hàm validate schema Zod cấu trúc bài học | Báo lỗi validation schema, huỷ nạp bài học | Schema reject dữ liệu thiếu trường | Pass |
+| **TC-12** | Sinh bài học | Unit | Phân tích giá trị biên | Không | Văn bản trích xuất rỗng 0 ký tự | Gọi hàm kiểm tra độ dài nội dung tài liệu trước khi sinh | Báo lỗi nội dung quá ngắn để sinh bài học | Báo lỗi CONTENT_EMPTY | Pass |
+| **TC-13** | Sinh bài học | Integration | Chuyển trạng thái | Khoá học có tài liệu đã trích xuất, còn Quota | Tham số: courseId, difficulty: standard | Gửi POST /api/v1/ai/courses/:id/generate-lessons | HTTP 202/200, tạo bản ghi AIJob trạng thái QUEUED, trừ 1 lượt quota | Tạo job trạng thái QUEUED thành công | Pass |
+| **TC-14** | Sinh bài học | Integration | Đoán lỗi / Giá trị biên | Tài khoản đã sử dụng hết 10/10 lượt AI trong tháng | Gửi yêu cầu sinh bài học mới | Gửi POST /api/v1/ai/courses/:id/generate-lessons | HTTP 403 Forbidden / 429, mã lỗi QUOTA_EXCEEDED, không tạo thêm job | HTTP 403, báo lỗi hết lượt sử dụng | Pass |
+| **TC-15** | Toàn trình | E2E | Luồng người dùng | Hệ thống live hoạt động bình thường | Chuỗi hành động: Xem danh sách khoá học $\rightarrow$ Chi tiết khoá học $\rightarrow$ Kiểm tra sẵn sàng tải tài liệu | Truy cập /courses $\rightarrow$ Chọn khoá học $\rightarrow$ Kiểm tra container tài liệu và nút 'Sinh bài học' | Các thành phần giao diện hiển thị đầy đủ, không phát sinh lỗi console | Giao diện hiển thị đầy đủ, phản hồi nhanh chóng | Pass |
