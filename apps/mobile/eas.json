@@ -11,7 +11,7 @@
       "environment": "development",
       "env": {
         "APP_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "https://54-206-111-17.sslip.io"
+        "EXPO_PUBLIC_API_URL": "https://13-211-191-95.sslip.io"
       }
     },
     "preview": {
@@ -20,7 +20,7 @@
       "environment": "preview",
       "env": {
         "APP_ENV": "preview",
-        "EXPO_PUBLIC_API_URL": "https://54-206-111-17.sslip.io"
+        "EXPO_PUBLIC_API_URL": "https://13-211-191-95.sslip.io"
       },
       "android": {
         "buildType": "apk"
@@ -31,7 +31,7 @@
       "environment": "production",
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://54-206-111-17.sslip.io"
+        "EXPO_PUBLIC_API_URL": "https://13-211-191-95.sslip.io"
       },
       "autoIncrement": true
     }
