@@ -8,7 +8,11 @@ const { randomUUID } = require('./uuid');
 const { LIMITS, PLANS, createState, addCourse, addDocument, addJob, tick, setProgress, getProgress, iso, DAY } = require('./state');
 
 /** Đọc từ workspace `packages/contracts` nên luôn khớp schema hiện tại. Là TS source: chạy bằng `tsx` (`npm run mock`), Metro hoặc Jest, không chạy bằng `node` thuần. */
-const { CONTRACTS_HASH, importTextDocumentSchema, submitReviewSchema } = require('@learn/contracts');
+const {
+  CONTRACTS_HASH, importTextDocumentSchema, submitReviewSchema, REVIEW_QUEUE_LIMIT,
+  createDeckSchema, patchDeckSchema, createFlashcardSchema, patchFlashcardSchema, submitFlashcardReviewSchema,
+  generateFlashcardsSchema, patchFlashcardDraftSchema, acceptFlashcardDraftsSchema, submitFeedbackSchema, changePasswordSchema,
+} = require('@learn/contracts');
 const MIN_MOBILE_VERSION = '1.0.0';
 const ACCESS_TTL_MS_DEFAULT = 15 * 60_000;
 
@@ -598,6 +602,189 @@ function createMockApi(options = {}) {
     };
     reviewState.set(`${ctx.user.id}:${card.questionId}`, result);
     return result;
+  });
+
+  // Bộ thẻ tự tạo (W1) và Thẻ nháp AI (W2). Lưu trong `state` để /__mock/reset xoá luôn.
+  const decksOf = (user) => {
+    const all = (state.decks ??= []);
+    if (!all.some((d) => d.userId === user.id) && !state.seededDecks?.has(user.id)) {
+      (state.seededDecks ??= new Set()).add(user.id);
+      const now = iso(Date.now());
+      const deck = { id: randomUUID(), userId: user.id, title: 'Từ vựng mẫu', courseId: null, createdAt: now, updatedAt: now };
+      all.push(deck);
+      [['hello', 'xin chào'], ['thank you', 'cảm ơn'], ['goodbye', 'tạm biệt']].forEach(([front, back]) => newCard(deck, front, back));
+    }
+    return all.filter((d) => d.userId === user.id);
+  };
+  function newCard(deck, front, back) {
+    const now = iso(Date.now());
+    const card = { id: randomUUID(), deckId: deck.id, front, back, dueAt: now, intervalDays: 0, repetitions: 0, lastReviewedAt: null, createdAt: now, updatedAt: now };
+    (state.cards ??= []).push(card);
+    return card;
+  }
+  const cardsOf = (deckId) => (state.cards ?? []).filter((c) => c.deckId === deckId);
+  const isDue = (c) => Date.parse(c.dueAt) <= Date.now();
+  const deckSummary = (d) => {
+    const cards = cardsOf(d.id);
+    return {
+      id: d.id, title: d.title, courseId: d.courseId, cardCount: cards.length,
+      newCount: cards.filter((c) => c.repetitions === 0 && !c.lastReviewedAt).length,
+      learningCount: cards.filter((c) => c.lastReviewedAt).length,
+      dueCount: cards.filter(isDue).length, createdAt: d.createdAt, updatedAt: d.updatedAt,
+    };
+  };
+  const ownDeck = (ctx, id = ctx.params.id) => {
+    const d = decksOf(ctx.user).find((x) => x.id === id);
+    if (!d) throw notFound('Không tìm thấy bộ thẻ.');
+    return d;
+  };
+  const ownCard = (ctx) => {
+    const c = (state.cards ?? []).find((x) => x.id === ctx.params.id);
+    if (!c || !decksOf(ctx.user).some((d) => d.id === c.deckId)) throw notFound('Không tìm thấy thẻ.');
+    return c;
+  };
+  const parse = (schema, ctx) => {
+    const r = schema.safeParse(body(ctx));
+    if (!r.success) throw bad(r.error.issues[0]?.message ?? 'Dữ liệu không hợp lệ.');
+    return r.data;
+  };
+  const dueResponse = (cards, ctx) => {
+    const limit = Math.max(1, Math.min(50, Number(ctx.query.get('limit')) || 20));
+    const due = cards.filter(isDue).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+    const next = cards.filter((c) => !isDue(c)).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+    const pick = ({ id, deckId, front, back, dueAt, intervalDays, repetitions }) => ({ id, deckId, front, back, dueAt, intervalDays, repetitions });
+    return { cards: due.slice(0, limit).map(pick), dueCount: due.length, nextDueAt: next[0]?.dueAt ?? null };
+  };
+  const myCards = (user) => decksOf(user).flatMap((d) => cardsOf(d.id));
+
+  route('GET', '/api/v1/decks', (ctx) => ({ decks: decksOf(ctx.user).map(deckSummary) }));
+  route('POST', '/api/v1/decks', (ctx) => {
+    const input = parse(createDeckSchema, ctx);
+    if (input.courseId) ownCourse(ctx.user, input.courseId);
+    decksOf(ctx.user);
+    const now = iso(Date.now());
+    const deck = { id: randomUUID(), userId: ctx.user.id, title: input.title, courseId: input.courseId ?? null, createdAt: now, updatedAt: now };
+    state.decks.push(deck);
+    return [201, deckSummary(deck)];
+  });
+  route('PATCH', '/api/v1/decks/:id', (ctx) => {
+    const deck = ownDeck(ctx);
+    const input = parse(patchDeckSchema, ctx);
+    if (input.courseId) ownCourse(ctx.user, input.courseId);
+    Object.assign(deck, input, { updatedAt: iso(Date.now()) });
+    return deckSummary(deck);
+  });
+  route('DELETE', '/api/v1/decks/:id', (ctx) => {
+    const deck = ownDeck(ctx);
+    state.decks = state.decks.filter((d) => d !== deck);
+    state.cards = (state.cards ?? []).filter((c) => c.deckId !== deck.id);
+    return [204];
+  });
+  route('GET', '/api/v1/decks/:id/cards', (ctx) => {
+    const deck = ownDeck(ctx);
+    return { deck: deckSummary(deck), cards: cardsOf(deck.id) };
+  });
+  route('POST', '/api/v1/decks/:id/cards', (ctx) => {
+    const deck = ownDeck(ctx);
+    const input = parse(createFlashcardSchema, ctx);
+    deck.updatedAt = iso(Date.now());
+    return [201, newCard(deck, input.front, input.back)];
+  });
+  route('GET', '/api/v1/decks/:id/due', (ctx) => dueResponse(cardsOf(ownDeck(ctx).id), ctx));
+  route('GET', '/api/v1/flashcards/due', (ctx) => dueResponse(myCards(ctx.user), ctx));
+  route('PATCH', '/api/v1/cards/:id', (ctx) => {
+    const card = ownCard(ctx);
+    const input = parse(patchFlashcardSchema, ctx);
+    if (input.deckId) ownDeck(ctx, input.deckId);
+    Object.assign(card, input, { updatedAt: iso(Date.now()) });
+    return card;
+  });
+  route('DELETE', '/api/v1/cards/:id', (ctx) => {
+    const card = ownCard(ctx);
+    state.cards = state.cards.filter((c) => c !== card);
+    return [204];
+  });
+  route('POST', '/api/v1/cards/:id/review', (ctx) => {
+    const card = ownCard(ctx);
+    const { grade } = parse(submitFlashcardReviewSchema, ctx);
+    const intervalDays = { AGAIN: 0, HARD: 1, GOOD: 3, EASY: 7 }[grade];
+    const now = Date.now();
+    // AGAIN: đến hạn lại sau 1 phút để phiên ôn không lặp ngay thẻ vừa chấm.
+    Object.assign(card, { dueAt: iso(now + (intervalDays ? intervalDays * DAY : 60_000)), intervalDays, repetitions: intervalDays ? card.repetitions + 1 : 0, lastReviewedAt: iso(now), updatedAt: iso(now) });
+    return { cardId: card.id, dueAt: card.dueAt, intervalDays, repetitions: card.repetitions, easeFactor: 2.5, applied: true };
+  });
+
+  // Hàng đợi "Ôn tập": câu hỏi bài tập + thẻ tự tạo, trộn theo dueAt, cắt REVIEW_QUEUE_LIMIT.
+  route('GET', '/api/v1/reviews/queue', (ctx) => {
+    const titles = new Map(decksOf(ctx.user).map((d) => [d.id, d.title]));
+    const all = [
+      ...reviewCards(ctx.user).map((c) => ({ kind: 'question', ...c })),
+      ...myCards(ctx.user).map((c) => ({ kind: 'flashcard', id: c.id, deckId: c.deckId, deckTitle: titles.get(c.deckId), front: c.front, back: c.back, dueAt: c.dueAt })),
+    ];
+    const due = all.filter(isDue).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+    const next = all.filter((c) => !isDue(c)).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+    return { items: due.slice(0, REVIEW_QUEUE_LIMIT), dueCount: due.length, nextDueAt: next[0]?.dueAt ?? null };
+  });
+
+  route('POST', '/api/v1/ai/courses/:id/generate-flashcards', (ctx) => {
+    const c = ownCourse(ctx.user, ctx.params.id);
+    const input = parse(generateFlashcardsSchema, ctx);
+    checkQuota(ctx.user, 'AI_JOBS_RUN');
+    const job = addJob(state, c, ctx.user, Date.now(), 'QUEUED', 'GENERATE_FLASHCARDS');
+    job.inputParams = input;
+    return [202, jobSummary(job)];
+  });
+  const myDrafts = (user) => (state.flashcardDrafts ?? []).filter((d) => d.userId === user.id);
+  const ownDraft = (ctx) => {
+    const d = myDrafts(ctx.user).find((x) => x.id === ctx.params.id);
+    if (!d) throw notFound('Không tìm thấy thẻ nháp.');
+    return d;
+  };
+  const publicDraft = ({ userId: _u, ...d }) => d;
+  route('GET', '/api/v1/flashcards/drafts', (ctx) => {
+    const jobId = ctx.query.get('aiJobId');
+    return { drafts: myDrafts(ctx.user).filter((d) => !jobId || d.aiJobId === jobId).map(publicDraft) };
+  });
+  route('POST', '/api/v1/flashcards/drafts/accept', (ctx) => {
+    const input = parse(acceptFlashcardDraftsSchema, ctx);
+    const drafts = myDrafts(ctx.user).filter((d) => input.draftIds.includes(d.id));
+    if (!drafts.length) throw notFound('Không tìm thấy thẻ nháp.');
+    let deck;
+    if (input.deckId) deck = ownDeck(ctx, input.deckId);
+    else {
+      decksOf(ctx.user);
+      const now = iso(Date.now());
+      deck = { id: randomUUID(), userId: ctx.user.id, title: input.newDeckTitle, courseId: drafts[0].courseId, createdAt: now, updatedAt: now };
+      state.decks.push(deck);
+    }
+    drafts.forEach((d) => newCard(deck, d.front, d.back));
+    state.flashcardDrafts = state.flashcardDrafts.filter((d) => !drafts.includes(d));
+    return { deckId: deck.id, accepted: drafts.length };
+  });
+  route('PATCH', '/api/v1/flashcards/drafts/:id', (ctx) => {
+    const d = ownDraft(ctx);
+    Object.assign(d, parse(patchFlashcardDraftSchema, ctx));
+    return publicDraft(d);
+  });
+  route('DELETE', '/api/v1/flashcards/drafts/:id', (ctx) => {
+    const d = ownDraft(ctx);
+    state.flashcardDrafts = state.flashcardDrafts.filter((x) => x !== d);
+    return [204];
+  });
+
+  route('POST', '/api/v1/feedback', (ctx) => {
+    const input = parse(submitFeedbackSchema, ctx);
+    (state.feedback ??= []).push({ ...input, userId: ctx.user.id, createdAt: iso(Date.now()) });
+    return [201, { saved: input.answers.length }];
+  });
+
+  route('POST', '/api/v1/auth/change-password', (ctx) => {
+    const input = parse(changePasswordSchema, ctx);
+    if (ctx.user.password !== input.currentPassword) throw unauth('Mật khẩu hiện tại không đúng.');
+    ctx.user.password = input.newPassword;
+    // Giống máy chủ thật: thu hồi mọi phiên cũ, cấp phiên mới cho máy đang dùng.
+    for (const [token, rec] of state.refreshTokens) if (rec.userId === ctx.user.id) state.refreshTokens.delete(token);
+    return issueSession(ctx.user);
   });
 
   // Bạn học (spec 2026-11-20). Dữ liệu mẫu theo người dùng; mã `KETBAN22` mời được.
